@@ -135,6 +135,53 @@ const LEARNER_STATUS_TYPES = [
   },
 ];
 
+// ── Validation utilities ───────────────────────
+
+function getFieldError(el) {
+  if (el.type === 'checkbox') return 'This confirmation is required before submitting.';
+  if (el.tagName === 'SELECT') return 'Please select an option.';
+  if (el.type === 'date') return 'Please enter a date.';
+  if (el.tagName === 'TEXTAREA') return 'Please provide details.';
+  return 'This field is required.';
+}
+
+function validateField(el) {
+  const isEmpty = el.type === 'checkbox' ? !el.checked : !el.value.trim();
+  const errorEl = document.getElementById(el.id + 'Error');
+  el.classList.toggle('is-error', isEmpty);
+  if (errorEl) {
+    errorEl.textContent = isEmpty ? getFieldError(el) : '';
+    errorEl.hidden = !isEmpty;
+  }
+  return !isEmpty;
+}
+
+function validateForm() {
+  const fields = document.querySelectorAll('#requestForm [required]');
+  let valid = true;
+  fields.forEach(el => { if (!validateField(el)) valid = false; });
+  if (!valid) {
+    const first = document.querySelector('#requestForm .is-error');
+    if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+  return valid;
+}
+
+function attachValidation() {
+  document.querySelectorAll('#requestForm [required]').forEach(el => {
+    const err = document.createElement('p');
+    err.className = 'form-error';
+    err.id = el.id + 'Error';
+    err.hidden = true;
+    const anchor = el.type === 'checkbox' ? el.closest('.form-group') : el;
+    anchor.insertAdjacentElement('afterend', err);
+    el.addEventListener('input', () => validateField(el));
+    el.addEventListener('change', () => validateField(el));
+  });
+}
+
+// ── View router ────────────────────────────────
+
 function cardHTML(item) {
   return `
     <button class="request-card" data-id="${item.id}">
@@ -306,8 +353,11 @@ function renderFormTechnicalMentor() {
 
   document.getElementById('backBtn').addEventListener('click', renderCurriculum);
 
+  attachValidation();
+
   document.getElementById('requestForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     const data = {
       type: 'technical-mentor',
       learnerName: document.getElementById('learnerName').value.trim(),
@@ -367,8 +417,11 @@ function renderFormCurriculumFeedback() {
 
   document.getElementById('backBtn').addEventListener('click', renderCurriculum);
 
+  attachValidation();
+
   document.getElementById('requestForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     const data = {
       type: 'curriculum-feedback',
       standard: document.getElementById('standard').value,
@@ -434,8 +487,11 @@ function renderFormPlatformRequest() {
 
   document.getElementById('backBtn').addEventListener('click', renderCurriculum);
 
+  attachValidation();
+
   document.getElementById('requestForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     const data = {
       type: 'platform-request',
       learnerName: document.getElementById('learnerName').value.trim(),
@@ -495,8 +551,11 @@ function renderFormSystemSupport() {
 
   document.getElementById('backBtn').addEventListener('click', renderCurriculum);
 
+  attachValidation();
+
   document.getElementById('requestForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     const data = {
       type: 'system-support',
       systemAffected: document.getElementById('systemAffected').value,
@@ -550,8 +609,11 @@ function renderFormRefer() {
 
   document.getElementById('backBtn').addEventListener('click', renderLearnerStatus);
 
+  attachValidation();
+
   document.getElementById('requestForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     const data = {
       type: 'refer',
       learnerName: document.getElementById('learnerName').value.trim(),
@@ -626,8 +688,11 @@ function renderFormWithdrawal() {
 
   document.getElementById('backBtn').addEventListener('click', renderLearnerStatus);
 
+  attachValidation();
+
   document.getElementById('requestForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     const data = {
       type: 'withdrawal',
       learnerName: document.getElementById('learnerName').value.trim(),
@@ -688,8 +753,11 @@ function renderFormRTL() {
 
   document.getElementById('backBtn').addEventListener('click', renderLearnerStatus);
 
+  attachValidation();
+
   document.getElementById('requestForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     const data = {
       type: 'rtl',
       learnerName: document.getElementById('learnerName').value.trim(),
@@ -753,8 +821,11 @@ function renderFormBIL() {
 
   document.getElementById('backBtn').addEventListener('click', renderLearnerStatus);
 
+  attachValidation();
+
   document.getElementById('requestForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     const data = {
       type: 'bil',
       learnerName: document.getElementById('learnerName').value.trim(),
@@ -817,12 +888,11 @@ function renderFormGateway() {
 
   document.getElementById('backBtn').addEventListener('click', renderLearnerStatus);
 
+  attachValidation();
+
   document.getElementById('requestForm').addEventListener('submit', (e) => {
     e.preventDefault();
-    if (!document.getElementById('gatewayConfirm').checked) {
-      document.getElementById('gatewayConfirm').closest('.form-checkbox').classList.add('checkbox-error');
-      return;
-    }
+    if (!validateForm()) return;
     const data = {
       type: 'gateway',
       learnerName: document.getElementById('learnerName').value.trim(),
@@ -887,8 +957,11 @@ function renderFormAchievement() {
 
   document.getElementById('backBtn').addEventListener('click', renderLearnerStatus);
 
+  attachValidation();
+
   document.getElementById('requestForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     const data = {
       type: 'achievement',
       learnerName: document.getElementById('learnerName').value.trim(),
@@ -944,8 +1017,11 @@ function renderFormNewEnrolment() {
 
   document.getElementById('backBtn').addEventListener('click', renderNewLearner);
 
+  attachValidation();
+
   document.getElementById('requestForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     const data = {
       type: 'new-enrolment',
       learnerName: document.getElementById('learnerName').value.trim(),
@@ -996,8 +1072,11 @@ function renderFormOther() {
 
   document.getElementById('backBtn').addEventListener('click', renderHome);
 
+  attachValidation();
+
   document.getElementById('requestForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     const data = {
       type: 'other',
       subject: document.getElementById('subject').value.trim(),
@@ -1053,8 +1132,11 @@ function renderFormSuitability(type, title) {
 
   document.getElementById('backBtn').addEventListener('click', renderSuitabilityConcern);
 
+  attachValidation();
+
   document.getElementById('requestForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!validateForm()) return;
     const data = {
       type,
       learnerName: document.getElementById('learnerName').value.trim(),
