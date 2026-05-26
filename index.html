@@ -3,13 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Apprenticeship Service Desk</title>
+  <title>Boom Training — Apprenticeship Service Desk</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="app">
-    <p>Loading...</p>
-  </div>
+
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="header-logo">
+        <img src="btlogo.png" alt="Boom Training" class="logo-img" />
+        <span class="logo-divider"></span>
+        <span class="logo-title">Apprenticeship Service Desk</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="hero">
+      <h1 class="hero-title">How can we help?</h1>
+      <p class="hero-subtitle">Select a category below to raise a new request.</p>
+    </section>
+
+    <section class="card-grid" id="categoryGrid">
+
+      <button class="request-card" data-category="learner-status">
+        <div class="card-icon">&#x1F4CB;</div>
+        <h2 class="card-title">Changes in Learner Status</h2>
+        <p class="card-desc">Request a change to a learner's current programme status, including withdrawals, breaks in learning, and transfers.</p>
+        <span class="card-cta">Raise a request &rarr;</span>
+      </button>
+
+      <button class="request-card" data-category="suitability-concern">
+        <div class="card-icon">&#x26A0;&#xFE0F;</div>
+        <h2 class="card-title">New Learner Suitability Concern</h2>
+        <p class="card-desc">Flag a concern about a learner's suitability within the first 30 days of their programme.</p>
+        <span class="card-cta">Raise a request &rarr;</span>
+      </button>
+
+      <button class="request-card" data-category="curriculum">
+        <div class="card-icon">&#x1F4DA;</div>
+        <h2 class="card-title">Curriculum Requests</h2>
+        <p class="card-desc">Submit requests relating to learning content, delivery adjustments, or off-the-job training queries.</p>
+        <span class="card-cta">Raise a request &rarr;</span>
+      </button>
+
+      <button class="request-card" data-category="other">
+        <div class="card-icon">&#x1F4AC;</div>
+        <h2 class="card-title">Other</h2>
+        <p class="card-desc">Anything that doesn't fit the categories above. Provide as much detail as possible so we can route your request.</p>
+        <span class="card-cta">Raise a request &rarr;</span>
+      </button>
+
+    </section>
+  </main>
+
   <script src="app.js"></script>
 </body>
 </html>
