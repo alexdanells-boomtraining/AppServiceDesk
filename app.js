@@ -186,10 +186,10 @@ function updateHeader() {
   } else {
     const isOnWorkflow = _currentView === 'workflow';
     el.innerHTML = `
-      <span class="header-user">&#128100; ${user.displayName}</span>
       <button class="header-btn header-btn--ghost" id="workflowBtn">${isOnWorkflow ? 'Main Menu' : 'My Workflow'}</button>
       <button class="header-btn header-btn--outline" id="switchUserBtn">Switch User</button>
-      <button class="header-btn header-btn--outline" id="logoutBtn">Logout</button>`;
+      <button class="header-btn header-btn--outline" id="logoutBtn">Logout</button>
+      <span class="header-user">&#128100; ${user.displayName}</span>`;
     document.getElementById('switchUserBtn').addEventListener('click', () => openLoginModal());
     document.getElementById('workflowBtn').addEventListener('click', isOnWorkflow ? renderHome : renderWorkflow);
     document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -242,11 +242,76 @@ function saveTicket(data) {
   tickets.push({
     id: generateTicketId(),
     createdBy: user ? user.username : 'unknown',
-    assignedTo: null,
+    assignedTo: 'Manager',
+    participants: [],
+    comments: [],
     ...data,
     status: 'open',
   });
   localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+}
+
+function getTicket(id) {
+  return (JSON.parse(localStorage.getItem('asd_tickets') || '[]')).find(t => t.id === id) || null;
+}
+
+function updateTicket(id, updates) {
+  const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
+  const idx = tickets.findIndex(t => t.id === id);
+  if (idx === -1) return null;
+  tickets[idx] = { ...tickets[idx], ...updates };
+  localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+  return tickets[idx];
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return isNaN(d) ? dateStr : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+  const date = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  return `${date} at ${time}`;
+}
+
+function renderTicketFields(ticket) {
+  const rows = [];
+  const add = (label, val) => { if (val) rows.push([label, val]); };
+
+  add('Learner Name',   ticket.learnerName);
+  add('Employer Name',  ticket.employerName);
+  add('Standard',       ticket.standard);
+
+  switch (ticket.type) {
+    case 'achievement':       add('Outcome', ticket.outcome); break;
+    case 'bil':               add('Last Day of Learning', formatDate(ticket.ldol));
+                              add('Expected Return to Learning', formatDate(ticket.expectedRtl)); break;
+    case 'rtl':               add('Actual Return to Learning', formatDate(ticket.actualRtl)); break;
+    case 'withdrawal':        add('Last Day of Learning', formatDate(ticket.ldol));
+                              add('Withdrawal Reason', ticket.withdrawalReason); break;
+    case 'gateway':           add('OTJ Confirmed', 'Yes'); break;
+    case 'new-enrolment':     add('Planned Start Date', formatDate(ticket.plannedStartDate)); break;
+    case 'technical-mentor':  add('Area of Support', ticket.supportArea); break;
+    case 'curriculum-feedback': add('Feedback Type', ticket.feedbackType); break;
+    case 'platform-request':  add('Request Type', ticket.requestType); break;
+    case 'system-support':    add('System Affected', ticket.systemAffected);
+                              add('Issue Type', ticket.issueType); break;
+    case 'other':             add('Subject', ticket.subject); break;
+  }
+
+  add('Details',          ticket.details);
+  add('Additional Notes', ticket.notes);
+
+  return rows.map(([label, val]) => `
+    <div class="detail-row">
+      <span class="detail-label">${label}</span>
+      <span class="detail-value">${val}</span>
+    </div>`).join('');
 }
 
 // ── Workflow view ──────────────────────────────
@@ -259,12 +324,18 @@ function renderWorkflow(tab, statusFilter) {
   const user = getCurrentUser();
   if (!user) { openLoginModal(() => renderWorkflow(tab, statusFilter)); return; }
 
+  const isAdmin = user.role === 'admin';
   let tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
 
   const tabTickets = (() => {
-    let t = tab === 'queue'
-      ? (user.role === 'admin' ? tickets : tickets.filter(t => t.assignedTo === user.username))
-      : tickets.filter(t => t.createdBy === user.username);
+    let t;
+    if (isAdmin) {
+      t = tickets;
+    } else {
+      t = tab === 'queue'
+        ? tickets.filter(t => t.assignedTo === user.username || (t.participants || []).includes(user.username))
+        : tickets.filter(t => t.createdBy === user.username);
+    }
     if (statusFilter !== 'all') t = t.filter(t => t.status === statusFilter);
     return [...t].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   })();
@@ -274,24 +345,32 @@ function renderWorkflow(tab, statusFilter) {
       ${s === 'all' ? 'All' : STATUS_LABELS[s]}
     </button>`).join('');
 
+  const colCount = isAdmin ? 6 : 5;
   const rows = tabTickets.length ? tabTickets.map(t => `
-    <tr class="ticket-row">
-      <td class="ticket-id">${t.id || '—'}</td>
+    <tr class="ticket-row" data-search="${[t.id, t.learnerName, t.employerName, t.createdBy].filter(Boolean).join(' ').toLowerCase()}">
+      <td class="ticket-id ticket-id--link" data-id="${t.id}" data-origin="${isAdmin ? 'queue' : tab}">${t.id || '—'}</td>
       <td>${TICKET_TYPE_LABELS[t.type] || t.type || '—'}</td>
       <td>${t.learnerName || '—'}</td>
+      ${isAdmin ? `<td>${t.createdBy || '—'}</td>` : ''}
       <td>${t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
       <td><span class="status-badge status-badge--${t.status || 'open'}">${STATUS_LABELS[t.status] || 'Open'}</span></td>
     </tr>`).join('') :
-    `<tr><td colspan="5" class="ticket-empty">No tickets found.</td></tr>`;
+    `<tr><td colspan="${colCount}" class="ticket-empty">No tickets found.</td></tr>`;
+
+  const tabsHTML = isAdmin ? '' : `
+    <div class="workflow-tabs">
+      <button class="tab-btn ${tab === 'queue' ? 'tab-btn--active' : ''}" data-tab="queue">Queue</button>
+      <button class="tab-btn ${tab === 'requests' ? 'tab-btn--active' : ''}" data-tab="requests">Requests Made</button>
+    </div>`;
 
   document.getElementById('view').innerHTML = `
     <section class="workflow-header">
       <h1 class="hero-title">My Workflow</h1>
       <p class="hero-subtitle">Welcome back, ${user.displayName}</p>
     </section>
-    <div class="workflow-tabs">
-      <button class="tab-btn ${tab === 'queue' ? 'tab-btn--active' : ''}" data-tab="queue">Queue</button>
-      <button class="tab-btn ${tab === 'requests' ? 'tab-btn--active' : ''}" data-tab="requests">Requests Made</button>
+    ${tabsHTML}
+    <div class="search-bar">
+      <input class="ticket-search" id="ticketSearch" type="search" placeholder="Search by ticket ID, learner name, employer or raised by…" />
     </div>
     <div class="filter-bar">${filterBtns}</div>
     <div class="ticket-table-wrap">
@@ -301,18 +380,184 @@ function renderWorkflow(tab, statusFilter) {
             <th>Ticket ID</th>
             <th>Type</th>
             <th>Learner Name</th>
+            ${isAdmin ? '<th>Raised By</th>' : ''}
             <th>Date Raised</th>
             <th>Status</th>
           </tr>
         </thead>
-        <tbody>${rows}</tbody>
+        <tbody id="ticketTbody">${rows}</tbody>
       </table>
     </div>`;
 
-  document.querySelectorAll('.tab-btn').forEach(btn =>
-    btn.addEventListener('click', () => renderWorkflow(btn.dataset.tab, statusFilter)));
+  if (!isAdmin) {
+    document.querySelectorAll('.tab-btn').forEach(btn =>
+      btn.addEventListener('click', () => renderWorkflow(btn.dataset.tab, statusFilter)));
+  }
   document.querySelectorAll('.filter-btn').forEach(btn =>
     btn.addEventListener('click', () => renderWorkflow(tab, btn.dataset.status)));
+  document.querySelectorAll('.ticket-id--link').forEach(cell =>
+    cell.addEventListener('click', () => renderTicketDetail(cell.dataset.id, cell.dataset.origin)));
+
+  document.getElementById('ticketSearch').addEventListener('input', (e) => {
+    const q = e.target.value.toLowerCase().trim();
+    let anyVisible = false;
+    document.querySelectorAll('#ticketTbody .ticket-row').forEach(row => {
+      const match = !q || row.dataset.search.includes(q);
+      row.style.display = match ? '' : 'none';
+      if (match) anyVisible = true;
+    });
+    let noResults = document.getElementById('noSearchResults');
+    if (!anyVisible && q) {
+      if (!noResults) {
+        const tr = document.createElement('tr');
+        tr.id = 'noSearchResults';
+        tr.innerHTML = `<td colspan="${colCount}" class="ticket-empty">No tickets match your search.</td>`;
+        document.getElementById('ticketTbody').appendChild(tr);
+      }
+    } else if (noResults) {
+      noResults.remove();
+    }
+  });
+}
+
+// ── Ticket detail view ─────────────────────────
+
+function renderTicketDetail(ticketId, origin) {
+  const ticket = getTicket(ticketId);
+  if (!ticket) { renderWorkflow(origin); return; }
+  const user = getCurrentUser();
+  _currentView = 'workflow';
+  updateHeader();
+
+  const canManage = user && (user.role === 'manager' || user.role === 'admin');
+
+  const assigneeHTML = canManage
+    ? `<select class="form-select" id="assigneeSelect">
+        ${USERS.map(u => `<option value="${u.username}" ${ticket.assignedTo === u.username ? 'selected' : ''}>${u.displayName}</option>`).join('')}
+       </select>`
+    : `<p class="detail-value">${ticket.assignedTo || '—'}</p>`;
+
+  const existingParticipants = ticket.participants || [];
+  const participantChips = existingParticipants.length
+    ? existingParticipants.map(p => `
+        <span class="participant-chip">${p}
+          <button class="participant-remove" data-name="${p}" title="Remove">&times;</button>
+        </span>`).join('')
+    : `<span class="detail-value-muted">No participants yet.</span>`;
+
+  const availableToAdd = USERS.filter(u => !existingParticipants.includes(u.username));
+  const addParticipantHTML = availableToAdd.length ? `
+    <div class="participant-add-row">
+      <select class="form-select form-select--sm" id="participantSelect">
+        <option value="">Add participant…</option>
+        ${availableToAdd.map(u => `<option value="${u.username}">${u.displayName}</option>`).join('')}
+      </select>
+      <button class="btn-sm" id="addParticipantBtn">Add</button>
+    </div>` : '';
+
+  const commentsHTML = (ticket.comments || []).length
+    ? (ticket.comments || []).map(c => `
+        <div class="comment">
+          <div class="comment-meta">
+            <span class="comment-author">${c.author}</span>
+            <span class="comment-time">${formatDateTime(c.createdAt)}</span>
+          </div>
+          <div class="comment-body">${c.text}</div>
+        </div>`).join('')
+    : `<p class="no-comments">No comments yet.</p>`;
+
+  const statusPanelHTML = canManage ? `
+    <div class="detail-panel">
+      <h3 class="detail-panel-title">Status</h3>
+      <select class="form-select" id="statusSelect">
+        ${Object.entries(STATUS_LABELS).map(([k, v]) => `<option value="${k}" ${ticket.status === k ? 'selected' : ''}>${v}</option>`).join('')}
+      </select>
+    </div>` : '';
+
+  document.getElementById('view').innerHTML = `
+    <div class="back-bar">
+      <button class="back-btn" id="backBtn">&larr; Back to ${origin === 'queue' ? 'Queue' : 'Requests Made'}</button>
+    </div>
+    <div class="ticket-detail-header">
+      <div class="ticket-detail-header-top">
+        <span class="ticket-detail-id">${ticket.id}</span>
+        <span class="status-badge status-badge--${ticket.status || 'open'}">${STATUS_LABELS[ticket.status] || 'Open'}</span>
+      </div>
+      <h1 class="ticket-detail-title">${TICKET_TYPE_LABELS[ticket.type] || ticket.type}</h1>
+      <p class="ticket-detail-meta">Raised by <strong>${ticket.createdBy}</strong> · ${formatDateTime(ticket.createdAt)}</p>
+    </div>
+    <div class="ticket-detail-body">
+      <div class="ticket-detail-main">
+        <div class="detail-panel">
+          <h3 class="detail-panel-title">Ticket Details</h3>
+          ${renderTicketFields(ticket)}
+        </div>
+        <div class="detail-panel">
+          <h3 class="detail-panel-title">Comments</h3>
+          <div class="comments-list" id="commentsList">${commentsHTML}</div>
+          ${user ? `
+          <div class="comment-form">
+            <textarea class="form-textarea" id="commentText" placeholder="Add a comment…"></textarea>
+            <div class="form-actions">
+              <button class="btn-submit" id="addCommentBtn">Post Comment</button>
+            </div>
+          </div>` : ''}
+        </div>
+      </div>
+      <div class="ticket-detail-sidebar">
+        <div class="detail-panel">
+          <h3 class="detail-panel-title">Assignee</h3>
+          ${assigneeHTML}
+        </div>
+        <div class="detail-panel">
+          <h3 class="detail-panel-title">Participants</h3>
+          <div class="participants-list">${participantChips}</div>
+          ${addParticipantHTML}
+        </div>
+        ${statusPanelHTML}
+      </div>
+    </div>`;
+
+  document.getElementById('backBtn').addEventListener('click', () => renderWorkflow(origin));
+
+  if (user) {
+    document.getElementById('addCommentBtn').addEventListener('click', () => {
+      const text = document.getElementById('commentText').value.trim();
+      if (!text) return;
+      const fresh = getTicket(ticketId);
+      const comments = [...(fresh.comments || []), { author: user.displayName, text, createdAt: new Date().toISOString() }];
+      updateTicket(ticketId, { comments });
+      renderTicketDetail(ticketId, origin);
+    });
+  }
+
+  if (canManage) {
+    document.getElementById('assigneeSelect').addEventListener('change', e =>
+      updateTicket(ticketId, { assignedTo: e.target.value }));
+    document.getElementById('statusSelect').addEventListener('change', e =>
+      updateTicket(ticketId, { status: e.target.value }));
+  }
+
+  const addBtn = document.getElementById('addParticipantBtn');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      const val = document.getElementById('participantSelect').value;
+      if (!val) return;
+      const fresh = getTicket(ticketId);
+      const participants = [...(fresh.participants || [])];
+      if (!participants.includes(val)) participants.push(val);
+      updateTicket(ticketId, { participants });
+      renderTicketDetail(ticketId, origin);
+    });
+  }
+
+  document.querySelectorAll('.participant-remove').forEach(btn =>
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.name;
+      const fresh = getTicket(ticketId);
+      updateTicket(ticketId, { participants: (fresh.participants || []).filter(p => p !== name) });
+      renderTicketDetail(ticketId, origin);
+    }));
 }
 
 // ── Validation utilities ───────────────────────
