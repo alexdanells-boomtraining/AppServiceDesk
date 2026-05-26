@@ -1,5 +1,17 @@
 // AppServiceDesk — view router
 
+const STANDARDS = [
+  'Data Analyst',
+  'Data Technician',
+  'Applied AI & Automation',
+  'Multi-Channel Marketer',
+  'Assistant Accountant',
+  'Professional Accounting Technician',
+  'Digital Support Technician',
+  'Business Administrator',
+  'Operations/Departmental Manager',
+];
+
 const CATEGORIES = [
   {
     id: 'learner-status',
@@ -151,6 +163,17 @@ function renderLearnerStatus() {
     </section>`;
 
   document.getElementById('backBtn').addEventListener('click', renderHome);
+
+  document.querySelector('.card-grid').addEventListener('click', (e) => {
+    const card = e.target.closest('.request-card');
+    if (!card) return;
+    if (card.dataset.id === 'achievement') renderFormAchievement();
+    if (card.dataset.id === 'refer') renderFormRefer();
+    if (card.dataset.id === 'gateway') renderFormGateway();
+    if (card.dataset.id === 'bil') renderFormBIL();
+    if (card.dataset.id === 'rtl') renderFormRTL();
+    if (card.dataset.id === 'withdrawal') renderFormWithdrawal();
+  });
 }
 
 function renderSuitabilityConcern() {
@@ -183,6 +206,382 @@ function renderCurriculum() {
     </section>`;
 
   document.getElementById('backBtn').addEventListener('click', renderHome);
+}
+
+function renderFormRefer() {
+  const standardOptions = STANDARDS.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  document.getElementById('view').innerHTML = `
+    <div class="back-bar">
+      <button class="back-btn" id="backBtn">&larr; Back to Learner Status</button>
+    </div>
+    <section class="hero">
+      <h1 class="hero-title">Changes in Learner Status: Refer (Fail)</h1>
+      <p class="hero-subtitle">Complete the form below to raise this request.</p>
+    </section>
+    <form class="request-form" id="requestForm" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="learnerName">Learner Name</label>
+        <input class="form-input" type="text" id="learnerName" name="learnerName" placeholder="Full name of the learner" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="standard">Standard</label>
+        <select class="form-select" id="standard" name="standard" required>
+          <option value="" disabled selected>Select a standard</option>
+          ${standardOptions}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="notes">Additional Notes</label>
+        <textarea class="form-textarea" id="notes" name="notes" placeholder="Add any additional context or information here..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit">Submit Request</button>
+      </div>
+    </form>`;
+
+  document.getElementById('backBtn').addEventListener('click', renderLearnerStatus);
+
+  document.getElementById('requestForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = {
+      type: 'refer',
+      learnerName: document.getElementById('learnerName').value.trim(),
+      standard: document.getElementById('standard').value,
+      notes: document.getElementById('notes').value.trim(),
+      status: 'open',
+      createdAt: new Date().toISOString(),
+    };
+    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
+    tickets.push(data);
+    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    renderConfirmation();
+  });
+}
+
+function renderFormWithdrawal() {
+  const standardOptions = STANDARDS.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  document.getElementById('view').innerHTML = `
+    <div class="back-bar">
+      <button class="back-btn" id="backBtn">&larr; Back to Learner Status</button>
+    </div>
+    <section class="hero">
+      <h1 class="hero-title">Changes in Learner Status: Withdrawal</h1>
+      <p class="hero-subtitle">Complete the form below to raise this request.</p>
+    </section>
+    <form class="request-form" id="requestForm" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="learnerName">Learner Name</label>
+        <input class="form-input" type="text" id="learnerName" name="learnerName" placeholder="Full name of the learner" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="standard">Standard</label>
+        <select class="form-select" id="standard" name="standard" required>
+          <option value="" disabled selected>Select a standard</option>
+          ${standardOptions}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ldol">Last Day of Learning (LDOL)</label>
+        <input class="form-input" type="date" id="ldol" name="ldol" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="withdrawalReason">Withdrawal Reason</label>
+        <select class="form-select" id="withdrawalReason" name="withdrawalReason" required>
+          <option value="" disabled selected>Select a reason</option>
+          <option value="Employment ended / redundancy">Employment ended / redundancy</option>
+          <option value="Change of employer">Change of employer</option>
+          <option value="Personal circumstances">Personal circumstances</option>
+          <option value="Health reasons">Health reasons</option>
+          <option value="Learner chose to leave">Learner chose to leave</option>
+          <option value="Lack of employer support">Lack of employer support</option>
+          <option value="Programme not meeting learner needs">Programme not meeting learner needs</option>
+          <option value="Financial reasons">Financial reasons</option>
+          <option value="Relocation">Relocation</option>
+          <option value="Transfer to another provider">Transfer to another provider</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="notes">Additional Notes</label>
+        <textarea class="form-textarea" id="notes" name="notes" placeholder="Add any additional context or information here..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit">Submit Request</button>
+      </div>
+    </form>`;
+
+  document.getElementById('backBtn').addEventListener('click', renderLearnerStatus);
+
+  document.getElementById('requestForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = {
+      type: 'withdrawal',
+      learnerName: document.getElementById('learnerName').value.trim(),
+      standard: document.getElementById('standard').value,
+      ldol: document.getElementById('ldol').value,
+      withdrawalReason: document.getElementById('withdrawalReason').value,
+      notes: document.getElementById('notes').value.trim(),
+      status: 'open',
+      createdAt: new Date().toISOString(),
+    };
+    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
+    tickets.push(data);
+    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    renderConfirmation();
+  });
+}
+
+function renderFormRTL() {
+  const standardOptions = STANDARDS.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  document.getElementById('view').innerHTML = `
+    <div class="back-bar">
+      <button class="back-btn" id="backBtn">&larr; Back to Learner Status</button>
+    </div>
+    <section class="hero">
+      <h1 class="hero-title">Changes in Learner Status: Return to Learning (RTL)</h1>
+      <p class="hero-subtitle">Complete the form below to raise this request.</p>
+    </section>
+    <form class="request-form" id="requestForm" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="learnerName">Learner Name</label>
+        <input class="form-input" type="text" id="learnerName" name="learnerName" placeholder="Full name of the learner" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="standard">Standard</label>
+        <select class="form-select" id="standard" name="standard" required>
+          <option value="" disabled selected>Select a standard</option>
+          ${standardOptions}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="actualRtl">Actual Return to Learning</label>
+        <input class="form-input" type="date" id="actualRtl" name="actualRtl" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="notes">Additional Notes</label>
+        <textarea class="form-textarea" id="notes" name="notes" placeholder="Add any additional context or information here..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit">Submit Request</button>
+      </div>
+    </form>`;
+
+  document.getElementById('backBtn').addEventListener('click', renderLearnerStatus);
+
+  document.getElementById('requestForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = {
+      type: 'rtl',
+      learnerName: document.getElementById('learnerName').value.trim(),
+      standard: document.getElementById('standard').value,
+      actualRtl: document.getElementById('actualRtl').value,
+      notes: document.getElementById('notes').value.trim(),
+      status: 'open',
+      createdAt: new Date().toISOString(),
+    };
+    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
+    tickets.push(data);
+    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    renderConfirmation();
+  });
+}
+
+function renderFormBIL() {
+  const standardOptions = STANDARDS.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  document.getElementById('view').innerHTML = `
+    <div class="back-bar">
+      <button class="back-btn" id="backBtn">&larr; Back to Learner Status</button>
+    </div>
+    <section class="hero">
+      <h1 class="hero-title">Changes in Learner Status: Agreed Break in Learning (BIL)</h1>
+      <p class="hero-subtitle">Complete the form below to raise this request.</p>
+    </section>
+    <form class="request-form" id="requestForm" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="learnerName">Learner Name</label>
+        <input class="form-input" type="text" id="learnerName" name="learnerName" placeholder="Full name of the learner" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="standard">Standard</label>
+        <select class="form-select" id="standard" name="standard" required>
+          <option value="" disabled selected>Select a standard</option>
+          ${standardOptions}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="ldol">Last Day of Learning (LDOL)</label>
+        <input class="form-input" type="date" id="ldol" name="ldol" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="expectedRtl">Expected Return to Learning</label>
+        <input class="form-input" type="date" id="expectedRtl" name="expectedRtl" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="notes">Additional Notes</label>
+        <textarea class="form-textarea" id="notes" name="notes" placeholder="Add any additional context or information here..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit">Submit Request</button>
+      </div>
+    </form>`;
+
+  document.getElementById('backBtn').addEventListener('click', renderLearnerStatus);
+
+  document.getElementById('requestForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = {
+      type: 'bil',
+      learnerName: document.getElementById('learnerName').value.trim(),
+      standard: document.getElementById('standard').value,
+      ldol: document.getElementById('ldol').value,
+      expectedRtl: document.getElementById('expectedRtl').value,
+      notes: document.getElementById('notes').value.trim(),
+      status: 'open',
+      createdAt: new Date().toISOString(),
+    };
+    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
+    tickets.push(data);
+    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    renderConfirmation();
+  });
+}
+
+function renderFormGateway() {
+  const standardOptions = STANDARDS.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  document.getElementById('view').innerHTML = `
+    <div class="back-bar">
+      <button class="back-btn" id="backBtn">&larr; Back to Learner Status</button>
+    </div>
+    <section class="hero">
+      <h1 class="hero-title">Changes in Learner Status: Gateway to End Point Assessment</h1>
+      <p class="hero-subtitle">Complete the form below to raise this request.</p>
+    </section>
+    <form class="request-form" id="requestForm" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="learnerName">Learner Name</label>
+        <input class="form-input" type="text" id="learnerName" name="learnerName" placeholder="Full name of the learner" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="standard">Standard</label>
+        <select class="form-select" id="standard" name="standard" required>
+          <option value="" disabled selected>Select a standard</option>
+          ${standardOptions}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="notes">Additional Notes</label>
+        <textarea class="form-textarea" id="notes" name="notes" placeholder="Add any additional context or information here..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-checkbox">
+          <input type="checkbox" id="gatewayConfirm" name="gatewayConfirm" required />
+          <span>I confirm the learner has satisfied the OTJ requirement and the gateway form has been completed and uploaded to the relevant section on the platform.</span>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit">Submit Request</button>
+      </div>
+    </form>`;
+
+  document.getElementById('backBtn').addEventListener('click', renderLearnerStatus);
+
+  document.getElementById('requestForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!document.getElementById('gatewayConfirm').checked) {
+      document.getElementById('gatewayConfirm').closest('.form-checkbox').classList.add('checkbox-error');
+      return;
+    }
+    const data = {
+      type: 'gateway',
+      learnerName: document.getElementById('learnerName').value.trim(),
+      standard: document.getElementById('standard').value,
+      notes: document.getElementById('notes').value.trim(),
+      gatewayConfirmed: true,
+      status: 'open',
+      createdAt: new Date().toISOString(),
+    };
+    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
+    tickets.push(data);
+    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    renderConfirmation();
+  });
+}
+
+function renderFormAchievement() {
+  const standardOptions = STANDARDS.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  document.getElementById('view').innerHTML = `
+    <div class="back-bar">
+      <button class="back-btn" id="backBtn">&larr; Back to Learner Status</button>
+    </div>
+    <section class="hero">
+      <h1 class="hero-title">Changes in Learner Status: Achievement</h1>
+      <p class="hero-subtitle">Complete the form below to raise this request.</p>
+    </section>
+    <form class="request-form" id="requestForm" novalidate>
+      <div class="form-group">
+        <label class="form-label" for="learnerName">Learner Name</label>
+        <input class="form-input" type="text" id="learnerName" name="learnerName" placeholder="Full name of the learner" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="standard">Standard</label>
+        <select class="form-select" id="standard" name="standard" required>
+          <option value="" disabled selected>Select a standard</option>
+          ${standardOptions}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="outcome">Outcome</label>
+        <select class="form-select" id="outcome" name="outcome" required>
+          <option value="" disabled selected>Select an outcome</option>
+          <option value="Pass">Pass</option>
+          <option value="Merit">Merit</option>
+          <option value="Distinction">Distinction</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="notes">Additional Notes</label>
+        <textarea class="form-textarea" id="notes" name="notes" placeholder="Add any additional context or information here..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit">Submit Request</button>
+      </div>
+    </form>`;
+
+  document.getElementById('backBtn').addEventListener('click', renderLearnerStatus);
+
+  document.getElementById('requestForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = {
+      type: 'achievement',
+      learnerName: document.getElementById('learnerName').value.trim(),
+      standard: document.getElementById('standard').value,
+      outcome: document.getElementById('outcome').value,
+      notes: document.getElementById('notes').value.trim(),
+      status: 'open',
+      createdAt: new Date().toISOString(),
+    };
+    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
+    tickets.push(data);
+    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    renderConfirmation();
+  });
+}
+
+function renderConfirmation() {
+  document.getElementById('view').innerHTML = `
+    <section class="hero confirmation">
+      <div class="confirmation-icon">✅</div>
+      <h1 class="hero-title">Request Submitted</h1>
+      <p class="hero-subtitle">Your request has been logged and will be picked up by the team shortly.</p>
+      <button class="btn-submit" id="homeBtn">Back to main menu</button>
+    </section>`;
+
+  document.getElementById('homeBtn').addEventListener('click', renderHome);
 }
 
 document.addEventListener('DOMContentLoaded', renderHome);
