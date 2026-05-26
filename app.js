@@ -185,11 +185,16 @@ function updateHeader() {
     document.getElementById('loginBtn').addEventListener('click', () => openLoginModal());
   } else {
     const isOnWorkflow = _currentView === 'workflow';
+    const unreadCount = getUnreadQueueCount(user);
+    const badge = unreadCount > 0 ? `<span class="notif-badge">${unreadCount > 99 ? '99+' : unreadCount}</span>` : '';
     el.innerHTML = `
       <button class="header-btn header-btn--ghost" id="workflowBtn">${isOnWorkflow ? 'Main Menu' : 'My Workflow'}</button>
       <button class="header-btn header-btn--outline" id="switchUserBtn">Switch User</button>
       <button class="header-btn header-btn--outline" id="logoutBtn">Logout</button>
-      <span class="header-user">&#128100; ${user.displayName}</span>`;
+      <span class="header-user-wrap">
+        <span class="header-user">&#128100; ${user.displayName}</span>
+        ${badge}
+      </span>`;
     document.getElementById('switchUserBtn').addEventListener('click', () => openLoginModal());
     document.getElementById('workflowBtn').addEventListener('click', isOnWorkflow ? renderHome : renderWorkflow);
     document.getElementById('logoutBtn').addEventListener('click', () => {
@@ -198,6 +203,38 @@ function updateHeader() {
       renderHome();
     });
   }
+}
+
+// ── Read / unread tracking ─────────────────────
+
+function getReadMap() {
+  return JSON.parse(localStorage.getItem('asd_read') || '{}');
+}
+
+function isTicketRead(ticketId, username) {
+  return (getReadMap()[username] || []).includes(ticketId);
+}
+
+function markTicketRead(ticketId, username) {
+  const map = getReadMap();
+  if (!map[username]) map[username] = [];
+  if (!map[username].includes(ticketId)) map[username].push(ticketId);
+  localStorage.setItem('asd_read', JSON.stringify(map));
+}
+
+function markTicketUnread(ticketId, username) {
+  const map = getReadMap();
+  if (!map[username]) return;
+  map[username] = map[username].filter(id => id !== ticketId);
+  localStorage.setItem('asd_read', JSON.stringify(map));
+}
+
+function getUnreadQueueCount(user) {
+  const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
+  const queue = user.role === 'admin'
+    ? tickets
+    : tickets.filter(t => t.assignedTo === user.username || (t.participants || []).includes(user.username));
+  return queue.filter(t => !isTicketRead(t.id, user.username)).length;
 }
 
 // ── Ticket helpers ─────────────────────────────
@@ -346,15 +383,19 @@ function renderWorkflow(tab, statusFilter) {
     </button>`).join('');
 
   const colCount = isAdmin ? 6 : 5;
-  const rows = tabTickets.length ? tabTickets.map(t => `
-    <tr class="ticket-row" data-search="${[t.id, t.learnerName, t.employerName, t.createdBy].filter(Boolean).join(' ').toLowerCase()}">
+  const isQueueView = isAdmin || tab === 'queue';
+  const rows = tabTickets.length ? tabTickets.map(t => {
+    const unread = isQueueView && !isTicketRead(t.id, user.username);
+    return `
+    <tr class="ticket-row${unread ? ' ticket-row--unread' : ''}" data-search="${[t.id, t.learnerName, t.employerName, t.createdBy].filter(Boolean).join(' ').toLowerCase()}">
       <td class="ticket-id ticket-id--link" data-id="${t.id}" data-origin="${isAdmin ? 'queue' : tab}">${t.id || '—'}</td>
       <td>${TICKET_TYPE_LABELS[t.type] || t.type || '—'}</td>
       <td>${t.learnerName || '—'}</td>
       ${isAdmin ? `<td>${t.createdBy || '—'}</td>` : ''}
-      <td>${t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+      <td>${formatDateTime(t.createdAt)}</td>
       <td><span class="status-badge status-badge--${t.status || 'open'}">${STATUS_LABELS[t.status] || 'Open'}</span></td>
-    </tr>`).join('') :
+    </tr>`;
+  }).join('') :
     `<tr><td colspan="${colCount}" class="ticket-empty">No tickets found.</td></tr>`;
 
   const tabsHTML = isAdmin ? '' : `
@@ -426,6 +467,7 @@ function renderTicketDetail(ticketId, origin) {
   const ticket = getTicket(ticketId);
   if (!ticket) { renderWorkflow(origin); return; }
   const user = getCurrentUser();
+  if (user) markTicketRead(ticketId, user.username);
   _currentView = 'workflow';
   updateHeader();
 
@@ -477,6 +519,7 @@ function renderTicketDetail(ticketId, origin) {
   document.getElementById('view').innerHTML = `
     <div class="back-bar">
       <button class="back-btn" id="backBtn">&larr; Back to ${origin === 'queue' ? 'Queue' : 'Requests Made'}</button>
+      ${user ? `<button class="btn-sm btn-sm--ghost" id="markUnreadBtn">Mark as unread</button>` : ''}
     </div>
     <div class="ticket-detail-header">
       <div class="ticket-detail-header-top">
@@ -558,6 +601,14 @@ function renderTicketDetail(ticketId, origin) {
       updateTicket(ticketId, { participants: (fresh.participants || []).filter(p => p !== name) });
       renderTicketDetail(ticketId, origin);
     }));
+
+  const markUnreadBtn = document.getElementById('markUnreadBtn');
+  if (markUnreadBtn) {
+    markUnreadBtn.addEventListener('click', () => {
+      markTicketUnread(ticketId, user.username);
+      renderWorkflow(origin);
+    });
+  }
 }
 
 // ── Validation utilities ───────────────────────

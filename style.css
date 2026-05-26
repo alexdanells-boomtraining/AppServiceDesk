@@ -77,10 +77,36 @@ body {
   gap: 0.6rem;
 }
 
+.header-user-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
 .header-user {
   font-size: 0.85rem;
   color: var(--grey-50);
   font-weight: 500;
+}
+
+.notif-badge {
+  position: absolute;
+  top: -6px;
+  right: -10px;
+  background: #e53935;
+  border: 2px solid var(--white);
+  border-radius: 50px;
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  pointer-events: none;
 }
 
 .header-btn {
@@ -255,6 +281,9 @@ body {
 
 .back-bar {
   margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .back-btn {
@@ -665,6 +694,10 @@ input[type="checkbox"].is-error {
 
 .ticket-row:hover td { background: var(--bg-secondary); }
 
+.ticket-row--unread td { background: rgba(229, 57, 53, 0.05); }
+.ticket-row--unread:hover td { background: rgba(229, 57, 53, 0.09); }
+.ticket-row--unread .ticket-id { color: #e53935; }
+
 .ticket-id {
   color: var(--purple);
   font-weight: 700;
@@ -924,6 +957,18 @@ input[type="checkbox"].is-error {
 }
 
 .btn-sm:hover { background: var(--purple-light); }
+
+.btn-sm--ghost {
+  background: transparent;
+  border: 1px solid var(--border-dark);
+  color: var(--text-muted);
+}
+
+.btn-sm--ghost:hover {
+  background: transparent;
+  border-color: var(--purple);
+  color: var(--purple);
+}
 
 /* ── Responsive ───────────────────────────────── */
 
