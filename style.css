@@ -270,6 +270,29 @@ body {
   resize: vertical;
 }
 
+.form-input.is-error,
+.form-select.is-error,
+.form-textarea.is-error {
+  border-color: #ff5454;
+}
+
+.form-input.is-error:focus,
+.form-select.is-error:focus,
+.form-textarea.is-error:focus {
+  border-color: #ff5454;
+}
+
+input[type="checkbox"].is-error {
+  outline: 2px solid #ff5454;
+  border-radius: 2px;
+}
+
+.form-error {
+  color: #ff5454;
+  font-size: 0.8rem;
+  margin-top: 0.3rem;
+}
+
 .form-textarea--tall {
   min-height: 180px;
 }
