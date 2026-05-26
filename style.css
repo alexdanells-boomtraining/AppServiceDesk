@@ -270,6 +270,24 @@ body {
   resize: vertical;
 }
 
+.form-textarea--tall {
+  min-height: 180px;
+}
+
+.form-optional {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--grey-50);
+}
+
+.form-hint {
+  font-size: 0.8rem;
+  color: var(--grey-50);
+  line-height: 1.5;
+  margin-bottom: 0.35rem;
+  font-style: italic;
+}
+
 .form-checkbox {
   display: flex;
   align-items: flex-start;
