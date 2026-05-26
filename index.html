@@ -10,15 +10,41 @@
 
   <header class="site-header">
     <div class="header-inner">
-      <div class="header-logo">
+      <div class="header-logo" id="homeLink" style="cursor:pointer">
         <img src="btlogo.png" alt="Boom Training" class="logo-img" />
         <span class="logo-divider"></span>
         <span class="logo-title">Apprenticeship Service Desk</span>
       </div>
+      <div class="header-actions" id="headerActions"></div>
     </div>
   </header>
 
   <main class="main" id="view"></main>
+
+  <!-- Login modal -->
+  <div class="modal-overlay" id="loginModal" hidden>
+    <div class="modal">
+      <h2 class="modal-title" id="loginModalTitle">Sign In</h2>
+      <p class="modal-subtitle" id="loginModalSubtitle">Select your account to continue.</p>
+      <div class="user-select-list" id="userSelectList">
+        <button class="user-select-btn" data-username="LSC">
+          <span class="user-select-name">LSC</span>
+          <span class="user-select-role">Learner Success Coach</span>
+        </button>
+        <button class="user-select-btn" data-username="Manager">
+          <span class="user-select-name">Manager</span>
+          <span class="user-select-role">Request Processor</span>
+        </button>
+        <button class="user-select-btn" data-username="Admin">
+          <span class="user-select-name">Admin</span>
+          <span class="user-select-role">Administrator — full ticket visibility</span>
+        </button>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="back-btn" id="loginModalClose">Cancel</button>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

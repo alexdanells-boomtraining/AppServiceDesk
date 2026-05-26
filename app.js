@@ -135,6 +135,186 @@ const LEARNER_STATUS_TYPES = [
   },
 ];
 
+// ── Users & auth ──────────────────────────────
+
+const USERS = [
+  { username: 'LSC',     password: 'boom', displayName: 'LSC',     role: 'coach'   },
+  { username: 'Manager', password: 'boom', displayName: 'Manager', role: 'manager' },
+  { username: 'Admin',   password: 'boom', displayName: 'Admin',   role: 'admin'   },
+];
+
+function getCurrentUser() {
+  const s = localStorage.getItem('asd_session');
+  return s ? JSON.parse(s) : null;
+}
+
+function setCurrentUser(user) {
+  localStorage.setItem('asd_session', JSON.stringify(user));
+}
+
+function clearCurrentUser() {
+  localStorage.removeItem('asd_session');
+}
+
+let _loginCallback = null;
+let _currentView = 'home';
+
+function openLoginModal(callback) {
+  _loginCallback = callback || null;
+  const isSwitching = !!getCurrentUser();
+  document.getElementById('loginModalTitle').textContent = isSwitching ? 'Switch User' : 'Sign In';
+  document.getElementById('loginModalSubtitle').textContent = isSwitching ? 'Select an account to switch to.' : 'Select your account to continue.';
+  document.getElementById('loginModal').hidden = false;
+}
+
+function closeLoginModal() {
+  document.getElementById('loginModal').hidden = true;
+  _loginCallback = null;
+}
+
+function requireLogin(fn) {
+  if (getCurrentUser()) { fn(); }
+  else { openLoginModal(fn); }
+}
+
+function updateHeader() {
+  const user = getCurrentUser();
+  const el = document.getElementById('headerActions');
+  if (!user) {
+    el.innerHTML = `<button class="header-btn" id="loginBtn">Login</button>`;
+    document.getElementById('loginBtn').addEventListener('click', () => openLoginModal());
+  } else {
+    const isOnWorkflow = _currentView === 'workflow';
+    el.innerHTML = `
+      <span class="header-user">&#128100; ${user.displayName}</span>
+      <button class="header-btn header-btn--ghost" id="workflowBtn">${isOnWorkflow ? 'Main Menu' : 'My Workflow'}</button>
+      <button class="header-btn header-btn--outline" id="switchUserBtn">Switch User</button>
+      <button class="header-btn header-btn--outline" id="logoutBtn">Logout</button>`;
+    document.getElementById('switchUserBtn').addEventListener('click', () => openLoginModal());
+    document.getElementById('workflowBtn').addEventListener('click', isOnWorkflow ? renderHome : renderWorkflow);
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      clearCurrentUser();
+      updateHeader();
+      renderHome();
+    });
+  }
+}
+
+// ── Ticket helpers ─────────────────────────────
+
+const TICKET_TYPE_LABELS = {
+  'achievement':         'Achievement',
+  'refer':               'Refer (Fail)',
+  'gateway':             'Gateway to EPA',
+  'bil':                 'Break in Learning',
+  'rtl':                 'Return to Learning',
+  'withdrawal':          'Withdrawal',
+  'new-enrolment':       'New Learner Enrolment',
+  'role-suitability':    'Role Suitability Concern',
+  'commitment-concern':  'Commitment Concern',
+  'technical-mentor':    'Technical Mentor Request',
+  'curriculum-feedback': 'Curriculum Feedback',
+  'platform-request':    'Platform Request',
+  'system-support':      'System Support',
+  'other':               'Other',
+};
+
+const STATUS_LABELS = {
+  'open':            'Open',
+  'in-progress':     'In Progress',
+  'awaiting-review': 'Awaiting Review',
+  'solved':          'Solved',
+};
+
+function generateTicketId() {
+  const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
+  if (!tickets.length) return 'ASD-001';
+  const nums = tickets
+    .map(t => parseInt((t.id || '').replace('ASD-', ''), 10))
+    .filter(n => !isNaN(n));
+  const max = nums.length ? Math.max(...nums) : 0;
+  return 'ASD-' + String(max + 1).padStart(3, '0');
+}
+
+function saveTicket(data) {
+  const user = getCurrentUser();
+  const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
+  tickets.push({
+    id: generateTicketId(),
+    createdBy: user ? user.username : 'unknown',
+    assignedTo: null,
+    ...data,
+    status: 'open',
+  });
+  localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+}
+
+// ── Workflow view ──────────────────────────────
+
+function renderWorkflow(tab, statusFilter) {
+  tab = tab || 'queue';
+  statusFilter = statusFilter || 'all';
+  _currentView = 'workflow';
+  updateHeader();
+  const user = getCurrentUser();
+  if (!user) { openLoginModal(() => renderWorkflow(tab, statusFilter)); return; }
+
+  let tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
+
+  const tabTickets = (() => {
+    let t = tab === 'queue'
+      ? (user.role === 'admin' ? tickets : tickets.filter(t => t.assignedTo === user.username))
+      : tickets.filter(t => t.createdBy === user.username);
+    if (statusFilter !== 'all') t = t.filter(t => t.status === statusFilter);
+    return [...t].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  })();
+
+  const filterBtns = ['all', 'open', 'in-progress', 'awaiting-review', 'solved'].map(s => `
+    <button class="filter-btn ${statusFilter === s ? 'filter-btn--active' : ''}" data-status="${s}">
+      ${s === 'all' ? 'All' : STATUS_LABELS[s]}
+    </button>`).join('');
+
+  const rows = tabTickets.length ? tabTickets.map(t => `
+    <tr class="ticket-row">
+      <td class="ticket-id">${t.id || '—'}</td>
+      <td>${TICKET_TYPE_LABELS[t.type] || t.type || '—'}</td>
+      <td>${t.learnerName || '—'}</td>
+      <td>${t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+      <td><span class="status-badge status-badge--${t.status || 'open'}">${STATUS_LABELS[t.status] || 'Open'}</span></td>
+    </tr>`).join('') :
+    `<tr><td colspan="5" class="ticket-empty">No tickets found.</td></tr>`;
+
+  document.getElementById('view').innerHTML = `
+    <section class="workflow-header">
+      <h1 class="hero-title">My Workflow</h1>
+      <p class="hero-subtitle">Welcome back, ${user.displayName}</p>
+    </section>
+    <div class="workflow-tabs">
+      <button class="tab-btn ${tab === 'queue' ? 'tab-btn--active' : ''}" data-tab="queue">Queue</button>
+      <button class="tab-btn ${tab === 'requests' ? 'tab-btn--active' : ''}" data-tab="requests">Requests Made</button>
+    </div>
+    <div class="filter-bar">${filterBtns}</div>
+    <div class="ticket-table-wrap">
+      <table class="ticket-table">
+        <thead>
+          <tr>
+            <th>Ticket ID</th>
+            <th>Type</th>
+            <th>Learner Name</th>
+            <th>Date Raised</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+
+  document.querySelectorAll('.tab-btn').forEach(btn =>
+    btn.addEventListener('click', () => renderWorkflow(btn.dataset.tab, statusFilter)));
+  document.querySelectorAll('.filter-btn').forEach(btn =>
+    btn.addEventListener('click', () => renderWorkflow(tab, btn.dataset.status)));
+}
+
 // ── Validation utilities ───────────────────────
 
 function getFieldError(el) {
@@ -193,6 +373,8 @@ function cardHTML(item) {
 }
 
 function renderHome() {
+  _currentView = 'home';
+  updateHeader();
   document.getElementById('view').innerHTML = `
     <section class="hero">
       <h1 class="hero-title">How can we help?</h1>
@@ -208,7 +390,7 @@ function renderHome() {
     if (card.dataset.id === 'learner-status') renderLearnerStatus();
     if (card.dataset.id === 'new-learner') renderNewLearner();
     if (card.dataset.id === 'curriculum') renderCurriculum();
-    if (card.dataset.id === 'other') renderFormOther();
+    if (card.dataset.id === 'other') requireLogin(renderFormOther);
   });
 }
 
@@ -230,12 +412,12 @@ function renderLearnerStatus() {
   document.querySelector('.card-grid').addEventListener('click', (e) => {
     const card = e.target.closest('.request-card');
     if (!card) return;
-    if (card.dataset.id === 'achievement') renderFormAchievement();
-    if (card.dataset.id === 'refer') renderFormRefer();
-    if (card.dataset.id === 'gateway') renderFormGateway();
-    if (card.dataset.id === 'bil') renderFormBIL();
-    if (card.dataset.id === 'rtl') renderFormRTL();
-    if (card.dataset.id === 'withdrawal') renderFormWithdrawal();
+    if (card.dataset.id === 'achievement') requireLogin(renderFormAchievement);
+    if (card.dataset.id === 'refer') requireLogin(renderFormRefer);
+    if (card.dataset.id === 'gateway') requireLogin(renderFormGateway);
+    if (card.dataset.id === 'bil') requireLogin(renderFormBIL);
+    if (card.dataset.id === 'rtl') requireLogin(renderFormRTL);
+    if (card.dataset.id === 'withdrawal') requireLogin(renderFormWithdrawal);
   });
 }
 
@@ -257,7 +439,7 @@ function renderNewLearner() {
   document.querySelector('.card-grid').addEventListener('click', (e) => {
     const card = e.target.closest('.request-card');
     if (!card) return;
-    if (card.dataset.id === 'new-enrolment') renderFormNewEnrolment();
+    if (card.dataset.id === 'new-enrolment') requireLogin(renderFormNewEnrolment);
     if (card.dataset.id === 'suitability-concern') renderSuitabilityConcern();
   });
 }
@@ -280,8 +462,8 @@ function renderSuitabilityConcern() {
   document.querySelector('.card-grid').addEventListener('click', (e) => {
     const card = e.target.closest('.request-card');
     if (!card) return;
-    if (card.dataset.id === 'role-suitability') renderFormSuitability('role-suitability', 'New Learner Suitability Concern: Role Suitability');
-    if (card.dataset.id === 'commitment-concern') renderFormSuitability('commitment-concern', 'New Learner Suitability Concern: Commitment Concern');
+    if (card.dataset.id === 'role-suitability') requireLogin(() => renderFormSuitability('role-suitability', 'New Learner Suitability Concern: Role Suitability'));
+    if (card.dataset.id === 'commitment-concern') requireLogin(() => renderFormSuitability('commitment-concern', 'New Learner Suitability Concern: Commitment Concern'));
   });
 }
 
@@ -303,10 +485,10 @@ function renderCurriculum() {
   document.querySelector('.card-grid').addEventListener('click', (e) => {
     const card = e.target.closest('.request-card');
     if (!card) return;
-    if (card.dataset.id === 'technical-mentor')    renderFormTechnicalMentor();
-    if (card.dataset.id === 'curriculum-feedback') renderFormCurriculumFeedback();
-    if (card.dataset.id === 'platform-request')    renderFormPlatformRequest();
-    if (card.dataset.id === 'system-support')      renderFormSystemSupport();
+    if (card.dataset.id === 'technical-mentor')    requireLogin(renderFormTechnicalMentor);
+    if (card.dataset.id === 'curriculum-feedback') requireLogin(renderFormCurriculumFeedback);
+    if (card.dataset.id === 'platform-request')    requireLogin(renderFormPlatformRequest);
+    if (card.dataset.id === 'system-support')      requireLogin(renderFormSystemSupport);
   });
 }
 
@@ -368,9 +550,7 @@ function renderFormTechnicalMentor() {
       status: 'open',
       createdAt: new Date().toISOString(),
     };
-    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
-    tickets.push(data);
-    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    saveTicket(data);
     renderConfirmation();
   });
 }
@@ -430,9 +610,7 @@ function renderFormCurriculumFeedback() {
       status: 'open',
       createdAt: new Date().toISOString(),
     };
-    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
-    tickets.push(data);
-    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    saveTicket(data);
     renderConfirmation();
   });
 }
@@ -502,9 +680,7 @@ function renderFormPlatformRequest() {
       status: 'open',
       createdAt: new Date().toISOString(),
     };
-    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
-    tickets.push(data);
-    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    saveTicket(data);
     renderConfirmation();
   });
 }
@@ -564,9 +740,7 @@ function renderFormSystemSupport() {
       status: 'open',
       createdAt: new Date().toISOString(),
     };
-    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
-    tickets.push(data);
-    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    saveTicket(data);
     renderConfirmation();
   });
 }
@@ -623,9 +797,7 @@ function renderFormRefer() {
       status: 'open',
       createdAt: new Date().toISOString(),
     };
-    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
-    tickets.push(data);
-    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    saveTicket(data);
     renderConfirmation();
   });
 }
@@ -704,9 +876,7 @@ function renderFormWithdrawal() {
       status: 'open',
       createdAt: new Date().toISOString(),
     };
-    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
-    tickets.push(data);
-    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    saveTicket(data);
     renderConfirmation();
   });
 }
@@ -768,9 +938,7 @@ function renderFormRTL() {
       status: 'open',
       createdAt: new Date().toISOString(),
     };
-    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
-    tickets.push(data);
-    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    saveTicket(data);
     renderConfirmation();
   });
 }
@@ -837,9 +1005,7 @@ function renderFormBIL() {
       status: 'open',
       createdAt: new Date().toISOString(),
     };
-    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
-    tickets.push(data);
-    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    saveTicket(data);
     renderConfirmation();
   });
 }
@@ -903,9 +1069,7 @@ function renderFormGateway() {
       status: 'open',
       createdAt: new Date().toISOString(),
     };
-    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
-    tickets.push(data);
-    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    saveTicket(data);
     renderConfirmation();
   });
 }
@@ -972,9 +1136,7 @@ function renderFormAchievement() {
       status: 'open',
       createdAt: new Date().toISOString(),
     };
-    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
-    tickets.push(data);
-    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    saveTicket(data);
     renderConfirmation();
   });
 }
@@ -1031,9 +1193,7 @@ function renderFormNewEnrolment() {
       status: 'open',
       createdAt: new Date().toISOString(),
     };
-    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
-    tickets.push(data);
-    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    saveTicket(data);
     renderConfirmation();
   });
 }
@@ -1086,9 +1246,7 @@ function renderFormOther() {
       status: 'open',
       createdAt: new Date().toISOString(),
     };
-    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
-    tickets.push(data);
-    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    saveTicket(data);
     renderConfirmation();
   });
 }
@@ -1146,9 +1304,7 @@ function renderFormSuitability(type, title) {
       status: 'open',
       createdAt: new Date().toISOString(),
     };
-    const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
-    tickets.push(data);
-    localStorage.setItem('asd_tickets', JSON.stringify(tickets));
+    saveTicket(data);
     renderConfirmation();
   });
 }
@@ -1165,4 +1321,24 @@ function renderConfirmation() {
   document.getElementById('homeBtn').addEventListener('click', renderHome);
 }
 
-document.addEventListener('DOMContentLoaded', renderHome);
+document.addEventListener('DOMContentLoaded', () => {
+  updateHeader();
+  renderHome();
+
+  document.getElementById('userSelectList').addEventListener('click', (e) => {
+    const btn = e.target.closest('.user-select-btn');
+    if (!btn) return;
+    const user = USERS.find(u => u.username === btn.dataset.username);
+    if (!user) return;
+    setCurrentUser(user);
+    closeLoginModal();
+    updateHeader();
+    if (_loginCallback) { const cb = _loginCallback; _loginCallback = null; cb(); }
+  });
+
+  document.getElementById('homeLink').addEventListener('click', renderHome);
+  document.getElementById('loginModalClose').addEventListener('click', closeLoginModal);
+  document.getElementById('loginModal').addEventListener('click', (e) => {
+    if (e.target.id === 'loginModal') closeLoginModal();
+  });
+});
