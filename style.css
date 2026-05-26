@@ -17,6 +17,12 @@
   --radius-md:    8px;
   --radius-lg:    12px;
 
+  /* Status colours */
+  --status-open:    #673aff;
+  --status-progress:#e9513c;
+  --status-review:  #d79053;
+  --status-solved:  #1e9b93;
+
   /* Dark theme */
   --bg-primary:   #191a1f;
   --bg-secondary: #202128;
@@ -31,6 +37,8 @@
   margin: 0;
   padding: 0;
 }
+
+[hidden] { display: none !important; }
 
 body {
   font-family: "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
@@ -56,6 +64,64 @@ body {
   max-width: 1100px;
   width: 100%;
   margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* ── Header actions ───────────────────────────── */
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.header-user {
+  font-size: 0.85rem;
+  color: var(--grey-50);
+  font-weight: 500;
+}
+
+.header-btn {
+  background: var(--purple);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.45rem 1rem;
+  transition: background 0.2s;
+  white-space: nowrap;
+}
+
+.header-btn:hover { background: var(--purple-light); }
+
+.header-btn--ghost {
+  background: transparent;
+  border: 1px solid var(--grey-92);
+  color: var(--charcoal);
+  font-family: "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+}
+
+.header-btn--ghost:hover {
+  border-color: var(--purple);
+  color: var(--purple);
+  background: transparent;
+}
+
+.header-btn--outline {
+  background: transparent;
+  border: 1px solid var(--border-dark);
+  color: var(--grey-50);
+}
+
+.header-btn--outline:hover {
+  border-color: #ff5454;
+  color: #ff5454;
+  background: transparent;
 }
 
 .header-logo {
@@ -385,6 +451,219 @@ input[type="checkbox"].is-error {
 .confirmation .btn-submit {
   margin-top: 1rem;
 }
+
+/* ── Login modal ──────────────────────────────── */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 0.3rem;
+}
+
+.modal-subtitle {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: 1.5rem;
+}
+
+.user-select-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.user-select-btn {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 0.85rem 1rem;
+  text-align: left;
+  transition: border-color 0.2s, background 0.2s;
+  width: 100%;
+}
+
+.user-select-btn:hover {
+  border-color: var(--purple);
+  background: var(--bg-card);
+}
+
+.user-select-name {
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.user-select-role {
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.8rem;
+  margin-top: 0.15rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1.25rem;
+}
+
+/* ── Workflow ──────────────────────────────────── */
+
+.workflow-header {
+  margin-bottom: 1.75rem;
+}
+
+.workflow-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--border-dark);
+  padding-bottom: 0;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 0.6rem 1.1rem;
+  margin-bottom: -1px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.tab-btn:hover { color: var(--text-primary); }
+
+.tab-btn--active {
+  border-bottom-color: var(--purple);
+  color: var(--purple);
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.filter-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dark);
+  border-radius: 50px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.35rem 0.9rem;
+  transition: border-color 0.2s, color 0.2s, background 0.2s;
+}
+
+.filter-btn:hover {
+  border-color: var(--purple);
+  color: var(--text-primary);
+}
+
+.filter-btn--active {
+  background: var(--purple);
+  border-color: var(--purple);
+  color: #fff;
+}
+
+/* ── Ticket table ─────────────────────────────── */
+
+.ticket-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-lg);
+}
+
+.ticket-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.ticket-table thead {
+  background: var(--bg-secondary);
+}
+
+.ticket-table th {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.ticket-table td {
+  border-top: 1px solid var(--border-dark);
+  color: var(--text-primary);
+  padding: 0.85rem 1rem;
+  vertical-align: middle;
+}
+
+.ticket-row:hover td { background: var(--bg-secondary); }
+
+.ticket-id {
+  color: var(--purple);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ticket-empty {
+  color: var(--text-muted);
+  padding: 2.5rem 1rem;
+  text-align: center;
+}
+
+/* ── Status badges ────────────────────────────── */
+
+.status-badge {
+  border-radius: 50px;
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.7rem;
+  white-space: nowrap;
+}
+
+.status-badge--open            { background: rgba(103,58,255,0.15); color: var(--status-open);    }
+.status-badge--in-progress     { background: rgba(233,81,60,0.15);  color: var(--status-progress); }
+.status-badge--awaiting-review { background: rgba(215,144,83,0.15); color: var(--status-review);  }
+.status-badge--solved          { background: rgba(30,155,147,0.15); color: var(--status-solved);  }
 
 /* ── Responsive ───────────────────────────────── */
 
