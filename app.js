@@ -258,6 +258,7 @@ function markCommentsRead(ticketId, username, count) {
 }
 
 function hasNewComments(ticket, username) {
+  if (!isTicketRead(ticket.id, username)) return false;
   const seen = getSeenCommentCount(ticket.id, username);
   return (ticket.comments || []).length > seen;
 }
@@ -398,7 +399,9 @@ function renderWorkflow(tab, statusFilter) {
   if (!user) { openLoginModal(() => renderWorkflow(tab, statusFilter)); return; }
 
   const isAdmin = user.role === 'admin';
+  const demoHidden = localStorage.getItem('asd_demo_hidden') === 'true';
   let tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
+  if (demoHidden) tickets = tickets.filter(t => !t._isDemo);
 
   const baseTickets = isAdmin
     ? tickets
@@ -472,6 +475,10 @@ function renderWorkflow(tab, statusFilter) {
         </thead>
         <tbody id="ticketTbody">${rows}</tbody>
       </table>
+    </div>
+    <div class="demo-controls">
+      <button class="btn-demo" id="resetDemoBtn">&#8635; Reset demo data</button>
+      <button class="btn-demo btn-demo--secondary" id="toggleDemoBtn">${demoHidden ? '&#128065; Show demo data' : '&#128065; Hide demo data'}</button>
     </div>`;
 
   if (!isAdmin) {
@@ -482,6 +489,15 @@ function renderWorkflow(tab, statusFilter) {
     btn.addEventListener('click', () => renderWorkflow(tab, btn.dataset.status)));
   document.querySelectorAll('.ticket-id--link').forEach(cell =>
     cell.addEventListener('click', () => renderTicketDetail(cell.dataset.id, cell.dataset.origin)));
+
+  document.getElementById('resetDemoBtn').addEventListener('click', () => {
+    seedDemoData();
+    renderWorkflow(tab, statusFilter);
+  });
+  document.getElementById('toggleDemoBtn').addEventListener('click', () => {
+    localStorage.setItem('asd_demo_hidden', demoHidden ? 'false' : 'true');
+    renderWorkflow(tab, statusFilter);
+  });
 
   document.getElementById('ticketSearch').addEventListener('input', (e) => {
     const q = e.target.value.toLowerCase().trim();
@@ -503,6 +519,417 @@ function renderWorkflow(tab, statusFilter) {
       noResults.remove();
     }
   });
+}
+
+// ── Demo data ──────────────────────────────────
+
+function getDemoTickets() {
+  const ref = new Date();
+  const dt = (daysAgo, h = 9, m = 0) => {
+    const d = new Date(ref);
+    d.setDate(d.getDate() - daysAgo);
+    d.setHours(h, m, 0, 0);
+    return d.toISOString();
+  };
+  const cm = (author, text, daysAgo, h = 10, m = 0) => ({ author, text, createdAt: dt(daysAgo, h, m) });
+
+  return [
+    // ── Gateway to EPA (LSC raises) ────────────
+    { id:'ASD-001', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(175,9,15),
+      type:'gateway', learnerName:'Emily Clarke', employerName:'Barclays Bank', standard:'Data Analyst', notes:'', gatewayConfirmed:true,
+      comments:[
+        cm('LSC','Emily has satisfied all OTJ requirements. Gateway form completed and uploaded. Please confirm receipt and next steps.',174,14,10),
+        cm('Manager','Received and logged. EPA gateway confirmed. Please ensure all portfolio evidence is submitted before the EPA window opens.',172,11,30),
+        cm('LSC','All evidence submitted and portfolios fully up to date. Emily is prepared and confident.',171,9,45),
+      ]},
+    { id:'ASD-002', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(160,10,0),
+      type:'gateway', learnerName:'James Patel', employerName:'KPMG LLP', standard:'Assistant Accountant', notes:'', gatewayConfirmed:true,
+      comments:[
+        cm('LSC','James is ready for gateway. OTJ hours confirmed, gateway form uploaded.',159,15,20),
+        cm('Manager','Confirmed. EPA has been scheduled. Great progress from James.',157,9,5),
+      ]},
+    { id:'ASD-003', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(148,8,30),
+      type:'gateway', learnerName:'Sophie Williams', employerName:'NHS Digital', standard:'Digital Support Technician', notes:'Employer has signed off on gateway readiness.', gatewayConfirmed:true,
+      comments:[
+        cm('LSC','Sophie is ready for gateway. Employer has confirmed readiness. Gateway form uploaded to platform.',147,13,0),
+        cm('Manager','All confirmed. EPA arranged for next month. Well done Sophie!',145,10,15),
+      ]},
+    { id:'ASD-004', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(140,9,45),
+      type:'gateway', learnerName:'Marcus Johnson', employerName:'BT Group', standard:'Data Analyst', notes:'', gatewayConfirmed:true,
+      comments:[
+        cm('LSC','Marcus has cleared gateway. OTJ confirmed, form uploaded. He is well-prepared for EPA.',139,11,30),
+        cm('Manager','All documentation looks good. EPA panel booked.',137,14,0),
+        cm('LSC','Marcus has been notified. He is very pleased with the progress.',136,9,10),
+      ]},
+    { id:'ASD-005', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(135,11,0),
+      type:'gateway', learnerName:'Chloe Bennett', employerName:'Amazon UK', standard:'Operations/Departmental Manager', notes:'', gatewayConfirmed:true,
+      comments:[
+        cm('LSC','Chloe is ready for gateway. All OTJ hours met. Gateway pack submitted.',134,16,0),
+        cm('Manager','Received. Everything in order — EPA window confirmed.',133,9,30),
+      ]},
+    { id:'ASD-006', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(128,9,0),
+      type:'gateway', learnerName:'Aidan Murphy', employerName:'Lloyds Banking Group', standard:'Professional Accounting Technician', notes:'', gatewayConfirmed:true,
+      comments:[
+        cm('LSC','Aidan has met all gateway requirements. Form and evidence uploaded.',127,10,45),
+        cm('Manager','Confirmed — EPA scheduled. Please advise Aidan to review the EPA guidance document.',125,14,20),
+      ]},
+    { id:'ASD-007', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(120,10,30),
+      type:'gateway', learnerName:'Zara Ahmed', employerName:'PwC UK', standard:'Business Administrator', notes:'', gatewayConfirmed:true,
+      comments:[
+        cm('LSC','Raising gateway for Zara Ahmed. All OTJ requirements satisfied, form completed and uploaded.',119,13,15),
+        cm('Manager','All received. EPA arranged. Zara has been a brilliant learner throughout.',117,11,0),
+      ]},
+    { id:'ASD-008', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'awaiting-review', createdAt:dt(110,9,20),
+      type:'gateway', learnerName:'Tom Fletcher', employerName:'HMRC', standard:'Data Technician', notes:'', gatewayConfirmed:true,
+      comments:[
+        cm('LSC','Tom has completed all OTJ hours and the gateway form is uploaded. Awaiting confirmation of EPA date.',109,14,0),
+        cm('Manager','Received. We are arranging EPA assessors and will confirm the date within two weeks.',107,10,30),
+      ]},
+    { id:'ASD-009', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'in-progress', createdAt:dt(95,11,15),
+      type:'gateway', learnerName:'Hannah Lewis', employerName:'Vodafone UK', standard:'Applied AI & Automation', notes:'Employer has flagged a minor scheduling concern for EPA.', gatewayConfirmed:true,
+      comments:[
+        cm('LSC','Hannah is gateway-ready. However, the employer has flagged scheduling constraints — please bear this in mind when arranging EPA.',94,15,0),
+        cm('Manager','Noted. We will work with the employer. Can you request their available dates?',92,9,20),
+        cm('LSC','Spoken to the employer — they are available from the first week of next month onwards.',90,13,45),
+      ]},
+    { id:'ASD-010', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'awaiting-review', createdAt:dt(85,9,0),
+      type:'gateway', learnerName:'Kyle Roberts', employerName:'Network Rail', standard:'Digital Support Technician', notes:'', gatewayConfirmed:true,
+      comments:[
+        cm('LSC','Kyle has satisfied all gateway requirements. Form submitted. Awaiting EPA confirmation.',84,10,30),
+        cm('Manager','Received. Reviewing available EPA slots — will update shortly.',82,14,0),
+      ]},
+    { id:'ASD-011', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'in-progress', createdAt:dt(75,10,0),
+      type:'gateway', learnerName:'Amelia Scott', employerName:'Rolls-Royce', standard:'Data Analyst', notes:'', gatewayConfirmed:true,
+      comments:[
+        cm('LSC','Amelia has cleared gateway. All documentation uploaded. Please arrange EPA.',74,11,30),
+        cm('Manager','EPA process underway. Will be in touch with dates imminently.',72,9,15),
+      ]},
+    { id:'ASD-012', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'open', createdAt:dt(65,9,30),
+      type:'gateway', learnerName:'Rhys Davies', employerName:'John Lewis Partnership', standard:'Multi-Channel Marketer', notes:'', gatewayConfirmed:true,
+      comments:[
+        cm('LSC','Rhys is ready for gateway. OTJ confirmed and all forms uploaded. Please review at your earliest convenience.',64,13,0),
+      ]},
+
+    // ── Break in Learning (LSC raises) ─────────
+    { id:'ASD-013', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(170,9,0),
+      type:'bil', learnerName:'Jasmine Carter', employerName:'Siemens UK', standard:'Business Administrator',
+      ldol:'2025-12-10', expectedRtl:'2026-02-10', notes:'Personal circumstances — learner is aware of the process.',
+      comments:[
+        cm('LSC','Jasmine will be commencing a break in learning from 10 December due to personal circumstances. Expected return is 10 February.',169,14,30),
+        cm('Manager','Break in learning logged. Please maintain regular contact with Jasmine and confirm her return when due.',167,10,0),
+        cm('LSC','Confirmed — I will check in with Jasmine monthly and raise an RTL ticket upon her return.',166,9,30),
+      ]},
+    { id:'ASD-014', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(155,11,0),
+      type:'bil', learnerName:'Connor Hughes', employerName:'HSBC UK', standard:'Data Analyst',
+      ldol:'2025-12-15', expectedRtl:'2026-03-01', notes:'',
+      comments:[
+        cm('LSC','Connor is commencing a break from 15 December — employer has agreed and documentation is in place.',154,15,0),
+        cm('Manager','Noted. Please ensure the break in learning agreement is uploaded to the platform.',152,9,45),
+      ]},
+    { id:'ASD-015', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(143,9,15),
+      type:'bil', learnerName:'Olivia King', employerName:'Accenture UK', standard:'Professional Accounting Technician',
+      ldol:'2026-01-05', expectedRtl:'2026-03-05', notes:'Medical leave — employer is supportive.',
+      comments:[
+        cm('LSC','Olivia is going on a medically-advised break from 5 January. Employer is fully briefed and supportive.',142,10,30),
+        cm('Manager','Recorded. Wishing Olivia a speedy recovery. Please flag any changes to the return date.',140,14,0),
+      ]},
+    { id:'ASD-016', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(132,9,0),
+      type:'bil', learnerName:'Ben Taylor', employerName:'Capita PLC', standard:'Multi-Channel Marketer',
+      ldol:'2026-01-20', expectedRtl:'2026-03-20', notes:'',
+      comments:[
+        cm('LSC','Ben has agreed a break from 20 January. Expected return is 20 March.',131,11,15),
+        cm('Manager','Logged. Please confirm when Ben is ready to return so we can raise the RTL.',129,10,0),
+      ]},
+    { id:'ASD-017', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(118,10,0),
+      type:'bil', learnerName:'Mia Wilson', employerName:'Transport for London', standard:'Digital Support Technician',
+      ldol:'2026-02-01', expectedRtl:'2026-04-01', notes:'Family circumstances.',
+      comments:[
+        cm('LSC','Mia has requested a break from 1 February due to family commitments. All parties have agreed.',117,14,30),
+        cm('Manager','Confirmed. Please stay in touch with Mia and the employer throughout the break.',115,9,10),
+      ]},
+    { id:'ASD-018', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(105,9,30),
+      type:'bil', learnerName:'Jake Thompson', employerName:'Barclays Bank', standard:'Assistant Accountant',
+      ldol:'2026-02-14', expectedRtl:'2026-04-14', notes:'',
+      comments:[
+        cm('LSC','Jake is taking a break from 14 February. He has been advised to remain engaged with learning materials where possible.',104,13,0),
+        cm('Manager','Logged. Please ensure the BIL agreement is signed and on file.',102,10,45),
+      ]},
+    { id:'ASD-019', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'in-progress', createdAt:dt(88,9,0),
+      type:'bil', learnerName:'Priya Sharma', employerName:'Deloitte UK', standard:'Operations/Departmental Manager',
+      ldol:'2026-03-01', expectedRtl:'2026-05-01', notes:'Learner is moving teams internally.',
+      comments:[
+        cm('LSC','Priya is on a break from 1 March whilst her internal team move is completed. Expected return 1 May.',87,15,0),
+        cm('Manager','Understood. Please confirm when the internal move is finalised so we can update the programme plan.',85,9,30),
+        cm('LSC','Team move is expected to be confirmed by end of April — will update as soon as I have news.',83,11,0),
+      ]},
+    { id:'ASD-020', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'open', createdAt:dt(72,11,0),
+      type:'bil', learnerName:"Daniel O'Brien", employerName:'Jaguar Land Rover', standard:'Applied AI & Automation',
+      ldol:'2026-04-07', expectedRtl:'2026-06-07', notes:'',
+      comments:[
+        cm('LSC',"Daniel has commenced a break from 7 April. Employer is aware and supportive. Expected return is 7 June.",71,14,0),
+      ]},
+
+    // ── Return to Learning (LSC raises) ────────
+    { id:'ASD-021', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(165,9,0),
+      type:'rtl', learnerName:'Emily Clarke', employerName:'Barclays Bank', standard:'Data Analyst', actualRtl:'2026-02-10', notes:'',
+      comments:[
+        cm('LSC','Emily has returned to learning as of 10 February. She is motivated and ready to continue towards gateway.',164,10,30),
+        cm('Manager','Welcome back Emily! Record updated. Please review outstanding activities and set updated targets.',162,14,0),
+      ]},
+    { id:'ASD-022', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(150,10,0),
+      type:'rtl', learnerName:'Tom Fletcher', employerName:'HMRC', standard:'Data Technician', actualRtl:'2026-02-20', notes:'',
+      comments:[
+        cm('LSC','Tom has returned to learning from 20 February. He has been briefed on what he missed and is keen to catch up.',149,11,0),
+        cm('Manager','Great news. Please ensure a review session is scheduled within the first two weeks of his return.',147,9,30),
+      ]},
+    { id:'ASD-023', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(138,9,30),
+      type:'rtl', learnerName:'Aidan Murphy', employerName:'Lloyds Banking Group', standard:'Professional Accounting Technician', actualRtl:'2026-03-05', notes:'Aidan is fully recovered and eager to return.',
+      comments:[
+        cm('LSC','Aidan has returned from his break as of 5 March. He is in great spirits and ready to progress.',137,14,0),
+        cm('Manager','Wonderful — welcome back Aidan! Programme plan updated. Please arrange an initial review this week.',135,10,15),
+      ]},
+    { id:'ASD-024', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(125,9,0),
+      type:'rtl', learnerName:'Sophie Williams', employerName:'NHS Digital', standard:'Digital Support Technician', actualRtl:'2026-03-14', notes:'',
+      comments:[
+        cm('LSC','Sophie has returned to learning from 14 March. All is well and she is keen to proceed towards gateway.',124,13,0),
+        cm('Manager','Confirmed — record updated. Sophie is on track for gateway later this quarter.',122,9,45),
+      ]},
+    { id:'ASD-025', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(112,10,30),
+      type:'rtl', learnerName:'Ben Taylor', employerName:'Capita PLC', standard:'Multi-Channel Marketer', actualRtl:'2026-03-22', notes:'',
+      comments:[
+        cm('LSC','Ben has returned to learning as of 22 March — two days ahead of schedule.',111,15,0),
+        cm('Manager','Excellent! Record updated. Please schedule a progress review within the next fortnight.',109,11,30),
+      ]},
+  ];
+}
+
+// tickets continued in getDemoTickets — append remaining 25
+(function appendDemoTickets() {
+  const _orig = getDemoTickets;
+  getDemoTickets = function() {
+    const ref = new Date();
+    const dt = (daysAgo, h = 9, m = 0) => { const d = new Date(ref); d.setDate(d.getDate() - daysAgo); d.setHours(h, m, 0, 0); return d.toISOString(); };
+    const cm = (author, text, daysAgo, h = 10, m = 0) => ({ author, text, createdAt: dt(daysAgo, h, m) });
+    const rest = [
+      // ── RTL continued ──────────────────────────
+      { id:'ASD-026', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'in-progress', createdAt:dt(97,9,0),
+        type:'rtl', learnerName:'Jasmine Carter', employerName:'Siemens UK', standard:'Business Administrator', actualRtl:'2026-04-02', notes:'',
+        comments:[
+          cm('LSC','Jasmine has returned to learning from 2 April. She is settling back in well.',96,10,0),
+          cm('Manager','Good news. Record updated. Please confirm gateway timeline at the next review.',94,14,30),
+        ]},
+      { id:'ASD-027', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'in-progress', createdAt:dt(82,11,0),
+        type:'rtl', learnerName:'Kyle Roberts', employerName:'Network Rail', standard:'Digital Support Technician', actualRtl:'2026-04-15', notes:'',
+        comments:[
+          cm('LSC','Kyle has returned to learning as of 15 April. He is motivated and eager to make up for lost time.',81,14,0),
+          cm('Manager','Confirmed. Please review his outstanding activities with him this week.',79,9,0),
+        ]},
+      { id:'ASD-028', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'open', createdAt:dt(68,9,30),
+        type:'rtl', learnerName:'Priya Sharma', employerName:'Deloitte UK', standard:'Operations/Departmental Manager', actualRtl:'2026-05-05', notes:"Priya's internal team move is now complete.",
+        comments:[
+          cm('LSC','Priya has returned to learning from 5 May following the completion of her internal move. She is keen to resume.',67,13,0),
+        ]},
+
+      // ── Withdrawal (LSC raises) ─────────────────
+      { id:'ASD-029', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(158,9,0),
+        type:'withdrawal', learnerName:'Connor Hughes', employerName:'HSBC UK', standard:'Data Analyst',
+        ldol:'2025-12-19', withdrawalReason:'Employment ended / redundancy', notes:'Learner was made redundant and has accepted a new role outside of the programme.',
+        comments:[
+          cm('LSC','Regrettably Connor has been made redundant and will need to withdraw. LDOL is 19 December.',157,14,0),
+          cm('Manager','Withdrawal initiated. Please ensure the employer and Connor receive confirmation letters and the signed form is returned.',155,10,30),
+          cm('LSC','Signed withdrawal form received and uploaded. Connor has been signposted to support services.',153,9,15),
+        ]},
+      { id:'ASD-030', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(145,10,0),
+        type:'withdrawal', learnerName:'Zara Ahmed', employerName:'PwC UK', standard:'Business Administrator',
+        ldol:'2026-01-08', withdrawalReason:'Learner chose to leave', notes:'',
+        comments:[
+          cm('LSC','Zara has decided to leave the programme of her own accord. LDOL is 8 January.',144,11,30),
+          cm('Manager','Withdrawal processed. Please return all signed documentation and ensure PwC are formally informed.',142,9,0),
+        ]},
+      { id:'ASD-031', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(133,9,45),
+        type:'withdrawal', learnerName:'Hannah Lewis', employerName:'Vodafone UK', standard:'Applied AI & Automation',
+        ldol:'2026-01-24', withdrawalReason:'Health reasons', notes:'Learner has been advised to take time out for health reasons.',
+        comments:[
+          cm('LSC','Hannah is withdrawing due to health reasons. Her doctor has advised she is unable to continue. LDOL is 24 January.',132,14,15),
+          cm('Manager','We wish Hannah all the best. Withdrawal documentation has been processed.',130,10,0),
+        ]},
+      { id:'ASD-032', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'solved', createdAt:dt(122,9,0),
+        type:'withdrawal', learnerName:'Marcus Johnson', employerName:'BT Group', standard:'Data Analyst',
+        ldol:'2026-02-07', withdrawalReason:'Change of employer', notes:'',
+        comments:[
+          cm('LSC','Marcus is leaving BT Group and therefore needs to withdraw. LDOL is 7 February.',121,13,30),
+          cm('Manager','Withdrawal processed. If Marcus secures a new employer please advise them to explore continuing the programme.',119,11,0),
+        ]},
+      { id:'ASD-033', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'in-progress', createdAt:dt(108,10,15),
+        type:'withdrawal', learnerName:'Rhys Davies', employerName:'John Lewis Partnership', standard:'Multi-Channel Marketer',
+        ldol:'2026-02-28', withdrawalReason:'Programme not meeting learner needs', notes:'Learner and employer have mutually agreed the programme is not the right fit.',
+        comments:[
+          cm('LSC','Rhys and his employer have mutually decided to withdraw. The programme is not aligned with his current role. LDOL is 28 February.',107,15,0),
+          cm('Manager','Could you provide feedback on the specific concerns so we can review programme fit in similar cases?',105,9,30),
+          cm('LSC','Feedback shared — primarily relates to the standard not reflecting day-to-day responsibilities in his position.',103,13,0),
+        ]},
+      { id:'ASD-034', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'awaiting-review', createdAt:dt(92,9,0),
+        type:'withdrawal', learnerName:'Chloe Bennett', employerName:'Amazon UK', standard:'Operations/Departmental Manager',
+        ldol:'2026-03-12', withdrawalReason:'Personal circumstances', notes:'',
+        comments:[
+          cm('LSC','Chloe has raised personal circumstances as the reason for withdrawal. LDOL is 12 March. I have signposted her to support services.',91,14,0),
+          cm('Manager','Thank you. Please ensure she receives pastoral support. We will review withdrawal documentation this week.',89,10,15),
+        ]},
+      { id:'ASD-035', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'awaiting-review', createdAt:dt(78,11,0),
+        type:'withdrawal', learnerName:'Jake Thompson', employerName:'Barclays Bank', standard:'Assistant Accountant',
+        ldol:'2026-03-28', withdrawalReason:'Financial reasons', notes:'',
+        comments:[
+          cm('LSC','Jake is withdrawing due to financial pressures. LDOL is 28 March. Barclays have been informed.',77,13,0),
+          cm('Manager','Withdrawal pending final sign-off. Please chase the signed withdrawal form from the employer.',75,9,45),
+        ]},
+      { id:'ASD-036', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'open', createdAt:dt(58,9,30),
+        type:'withdrawal', learnerName:'Mia Wilson', employerName:'Transport for London', standard:'Digital Support Technician',
+        ldol:'2026-04-22', withdrawalReason:'Relocation', notes:'Mia is relocating outside of the UK.',
+        comments:[
+          cm('LSC','Mia is withdrawing as she is relocating internationally. LDOL is 22 April. She has been brilliant and we wish her well.',57,14,30),
+        ]},
+
+      // ── Achievement (Manager raises → LSC reviews) ─
+      { id:'ASD-037', _isDemo:true, createdBy:'Manager', assignedTo:'LSC', participants:[], status:'solved', createdAt:dt(142,9,0),
+        type:'achievement', learnerName:'Olivia King', employerName:'Accenture UK', standard:'Professional Accounting Technician', outcome:'Distinction', notes:'EPA result confirmed by the awarding body.',
+        comments:[
+          cm('Manager','Pleased to confirm Olivia King has achieved her qualification with a Distinction. Please notify the learner and employer and arrange a celebration.',141,10,0),
+          cm('LSC','Wonderful news! I have contacted Olivia and her line manager at Accenture. Both are absolutely delighted.',139,14,30),
+        ]},
+      { id:'ASD-038', _isDemo:true, createdBy:'Manager', assignedTo:'LSC', participants:[], status:'solved', createdAt:dt(129,10,0),
+        type:'achievement', learnerName:"Daniel O'Brien", employerName:'Jaguar Land Rover', standard:'Applied AI & Automation', outcome:'Pass', notes:'',
+        comments:[
+          cm('Manager',"Daniel O'Brien has achieved a Pass in his Applied AI & Automation EPA. Please inform both Daniel and Jaguar Land Rover.",128,11,0),
+          cm('LSC','Daniel is really pleased. Jaguar Land Rover are happy with the outcome. All notifications sent.',126,14,0),
+        ]},
+      { id:'ASD-039', _isDemo:true, createdBy:'Manager', assignedTo:'LSC', participants:[], status:'solved', createdAt:dt(115,9,30),
+        type:'achievement', learnerName:'Emily Clarke', employerName:'Barclays Bank', standard:'Data Analyst', outcome:'Merit', notes:'',
+        comments:[
+          cm('Manager','Emily Clarke has achieved a Merit in her Data Analyst EPA. Please contact Barclays and Emily to share the result.',114,10,15),
+          cm('LSC','Fantastic result — Emily is thrilled. Barclays have been notified and extended their congratulations.',112,13,0),
+        ]},
+      { id:'ASD-040', _isDemo:true, createdBy:'Manager', assignedTo:'LSC', participants:[], status:'solved', createdAt:dt(98,9,0),
+        type:'achievement', learnerName:'James Patel', employerName:'KPMG LLP', standard:'Assistant Accountant', outcome:'Pass', notes:'',
+        comments:[
+          cm('Manager','James Patel has achieved a Pass in his Assistant Accountant EPA. Please liaise with KPMG and James to complete all achievement paperwork.',97,14,0),
+          cm('LSC','Confirmed. James and KPMG have both been informed and are very happy. All documentation is being processed.',95,10,30),
+        ]},
+      { id:'ASD-041', _isDemo:true, createdBy:'Manager', assignedTo:'LSC', participants:[], status:'awaiting-review', createdAt:dt(80,10,0),
+        type:'achievement', learnerName:'Sophie Williams', employerName:'NHS Digital', standard:'Digital Support Technician', outcome:'Distinction', notes:'Result pending final confirmation from awarding body.',
+        comments:[
+          cm('Manager','Provisional result for Sophie Williams is a Distinction — awaiting final confirmation from the awarding body. Please hold notification until confirmed.',79,11,30),
+          cm('LSC','Understood. I will wait for final confirmation before contacting Sophie and NHS Digital.',77,9,0),
+        ]},
+      { id:'ASD-042', _isDemo:true, createdBy:'Manager', assignedTo:'LSC', participants:[], status:'open', createdAt:dt(55,9,0),
+        type:'achievement', learnerName:'Amelia Scott', employerName:'Rolls-Royce', standard:'Data Analyst', outcome:'Merit', notes:'',
+        comments:[
+          cm('Manager','Amelia Scott has achieved a Merit. Please confirm with the learner and employer and initiate the achievement process.',54,14,0),
+        ]},
+
+      // ── Refer (Manager raises → LSC reviews) — UNREAD for LSC ─
+      { id:'ASD-043', _isDemo:true, createdBy:'Manager', assignedTo:'LSC', participants:[], status:'open', createdAt:dt(12,9,0),
+        type:'refer', learnerName:'Tom Fletcher', employerName:'HMRC', standard:'Data Technician', notes:'Learner was unable to demonstrate sufficient competency in the professional discussion element.',
+        comments:[
+          cm('Manager','Tom Fletcher has unfortunately been referred following his EPA. The assessor noted insufficient evidence in the professional discussion. Please arrange a debrief with Tom and his employer to agree a resit plan.',11,10,30),
+        ]},
+      { id:'ASD-044', _isDemo:true, createdBy:'Manager', assignedTo:'LSC', participants:[], status:'open', createdAt:dt(10,11,0),
+        type:'refer', learnerName:'Jasmine Carter', employerName:'Siemens UK', standard:'Business Administrator', notes:'',
+        comments:[
+          cm('Manager','Jasmine Carter has been referred following her EPA. The portfolio element did not meet the required standard. Please meet with Jasmine and develop a targeted improvement plan ahead of her resit.',9,9,30),
+        ]},
+      { id:'ASD-045', _isDemo:true, createdBy:'Manager', assignedTo:'LSC', participants:[], status:'open', createdAt:dt(8,9,30),
+        type:'refer', learnerName:'Marcus Johnson', employerName:'BT Group', standard:'Data Analyst', notes:'',
+        comments:[
+          cm('Manager',"Marcus Johnson's EPA result is a Refer. The assessor highlighted gaps in the case study component. Please arrange a call with Marcus this week to debrief and agree next steps.",7,14,0),
+        ]},
+      { id:'ASD-046', _isDemo:true, createdBy:'Manager', assignedTo:'LSC', participants:[], status:'open', createdAt:dt(6,10,0),
+        type:'refer', learnerName:'Hannah Lewis', employerName:'Vodafone UK', standard:'Applied AI & Automation', notes:'',
+        comments:[
+          cm('Manager',"Hannah Lewis has received a Refer outcome. The assessor's feedback points to limited applied knowledge in the AI implementation section. Please review the feedback with Hannah and devise a resit strategy.",5,11,15),
+        ]},
+
+      // ── Curriculum Requests (LSC raises) — recent, some with new comments for Manager ─
+      { id:'ASD-047', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'open', createdAt:dt(5,9,0),
+        type:'technical-mentor', learnerName:'Priya Sharma', employerName:'Deloitte UK', standard:'Data Analyst',
+        supportArea:'SQL and relational databases',
+        details:'Priya is struggling with SQL joins and relational database concepts. She is falling behind on the technical modules and would benefit from one-to-one support from a technical mentor with a strong data background. Her employer has also flagged this as a priority.',
+        comments:[
+          cm('LSC','Please could we arrange a technical mentor for Priya Sharma as a priority? She is finding the SQL modules challenging and her employer has raised concerns about her progress.',4,13,0),
+        ]},
+      { id:'ASD-048', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'in-progress', createdAt:dt(4,10,30),
+        type:'platform-request', learnerName:'Ben Taylor', employerName:'Capita PLC', standard:'Multi-Channel Marketer',
+        requestType:'Access Issue',
+        details:'Ben Taylor has been unable to access his learning modules on the platform since last Thursday. He has tried on multiple devices and browsers. This is impacting his ability to complete assignments ahead of his upcoming review.',
+        comments:[
+          cm('LSC','Ben has been locked out of the platform for several days. This is urgently impacting his learning. Please investigate and restore access as soon as possible.',3,14,0),
+          cm('Manager','We are investigating. It appears to be linked to a recent account migration. We expect to resolve within 24 hours and will update you.',2,9,30),
+        ]},
+      { id:'ASD-049', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'in-progress', createdAt:dt(3,9,0),
+        type:'system-support', systemAffected:'VLE', issueType:'Content Not Loading',
+        details:'Multiple learners are reporting that video content within the VLE is not loading. The issue affects all modules in the Data Analyst pathway. Learners are using Chrome on Windows. Error shown is "Media playback failed". This is impacting scheduled learning sessions.',
+        comments:[
+          cm('LSC','Three of my learners cannot load any video content on the VLE — all on Chrome. This is blocking their scheduled sessions. Please investigate urgently.',2,15,0),
+          cm('Manager','We have identified the issue — a CDN configuration update has affected media delivery. Our technical team is working on a fix. Estimated resolution: later today.',1,10,0),
+        ]},
+      { id:'ASD-050', _isDemo:true, createdBy:'LSC', assignedTo:'Manager', participants:[], status:'open', createdAt:dt(2,11,0),
+        type:'curriculum-feedback', standard:'Applied AI & Automation', feedbackType:'Content Issue',
+        details:'Several learners on the Applied AI & Automation standard have flagged that Module 4 (AI Ethics and Governance) feels very theoretical and disconnected from their day-to-day work. They are finding it difficult to apply the concepts in practice. It would be beneficial to include more practical case studies around responsible AI use in business settings.',
+        comments:[
+          cm('LSC','Feedback from multiple Applied AI & Automation learners — Module 4 content is too theoretical and assessment questions do not reflect the taught content well. Sharing for curriculum team review.',1,14,30),
+          cm('Manager','Thank you for raising this — it is valuable insight. I will pass this to the curriculum team for the next content refresh cycle.',0,9,0),
+        ]},
+    ];
+    return [..._orig(), ...rest];
+  };
+})();
+
+function seedDemoData() {
+  const tickets = getDemoTickets();
+  const demoIds = new Set(tickets.map(t => t.id));
+
+  // Replace demo tickets, preserve user-created ones
+  const existing = JSON.parse(localStorage.getItem('asd_tickets') || '[]').filter(t => !t._isDemo);
+  localStorage.setItem('asd_tickets', JSON.stringify([...existing, ...tickets]));
+
+  // Build read state — strip old demo entries then re-add
+  const readMap = JSON.parse(localStorage.getItem('asd_read') || '{}');
+  const commentMap = JSON.parse(localStorage.getItem('asd_comment_read') || '{}');
+  ['LSC','Manager','Admin'].forEach(u => {
+    readMap[u] = (readMap[u] || []).filter(id => !demoIds.has(id));
+    if (!commentMap[u]) commentMap[u] = {};
+    demoIds.forEach(id => delete commentMap[u][id]);
+  });
+
+  const first42 = tickets.slice(0, 42).map(t => t.id);
+
+  // LSC: read 001-042, and their own curriculum tickets 047-050
+  readMap.LSC.push(...first42, 'ASD-047', 'ASD-048', 'ASD-049', 'ASD-050');
+  // Manager: read 001-042, the Refer tickets they raised (043-046), and 048-050 (read, but 1 new comment each)
+  readMap.Manager.push(...first42, 'ASD-043', 'ASD-044', 'ASD-045', 'ASD-046', 'ASD-048', 'ASD-049', 'ASD-050');
+  // Admin: read 001-042
+  readMap.Admin.push(...first42);
+
+  ['LSC','Manager','Admin'].forEach(u => { readMap[u] = [...new Set(readMap[u])]; });
+  localStorage.setItem('asd_read', JSON.stringify(readMap));
+
+  // Comment seen counts
+  tickets.forEach(t => {
+    const n = (t.comments || []).length;
+    if (first42.includes(t.id)) {
+      commentMap.LSC[t.id] = n;
+      commentMap.Manager[t.id] = n;
+      commentMap.Admin[t.id] = n;
+    } else if (['ASD-043','ASD-044','ASD-045','ASD-046'].includes(t.id)) {
+      commentMap.Manager[t.id] = n; // Manager created these, seen all
+    } else if (t.id === 'ASD-047') {
+      commentMap.LSC[t.id] = n; // LSC created, seen all; Manager hasn't read it yet (⚡)
+    } else if (['ASD-048','ASD-049','ASD-050'].includes(t.id)) {
+      commentMap.LSC[t.id] = n;                       // LSC seen all
+      commentMap.Manager[t.id] = n > 1 ? n - 1 : 0;  // Manager has 1 unseen comment (💬)
+      commentMap.Admin[t.id] = n;
+    }
+  });
+  localStorage.setItem('asd_comment_read', JSON.stringify(commentMap));
 }
 
 // ── Ticket detail view ─────────────────────────
@@ -572,6 +999,7 @@ function renderTicketDetail(ticketId, origin) {
       <div class="ticket-detail-header-top">
         <span class="ticket-detail-id">${ticket.id}</span>
         <span class="status-badge status-badge--${ticket.status || 'open'}">${STATUS_LABELS[ticket.status] || 'Open'}</span>
+        ${ticket._isDemo ? '<span class="test-data-badge">Test Data</span>' : ''}
       </div>
       <h1 class="ticket-detail-title">${TICKET_TYPE_LABELS[ticket.type] || ticket.type}</h1>
       <p class="ticket-detail-meta">Raised by <strong>${ticket.createdBy}</strong> · ${formatDateTime(ticket.createdAt)}</p>
@@ -1665,6 +2093,9 @@ function renderConfirmation() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (!JSON.parse(localStorage.getItem('asd_tickets') || '[]').some(t => t._isDemo)) {
+    seedDemoData();
+  }
   updateHeader();
   renderHome();
 

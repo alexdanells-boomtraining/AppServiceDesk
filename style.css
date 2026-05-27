@@ -744,6 +744,48 @@ input[type="checkbox"].is-error {
 
 /* ── Responsive ───────────────────────────────── */
 
+/* ── Test data badge ─────────────────────────── */
+
+.test-data-badge {
+  background: rgba(229, 57, 53, 0.1);
+  border: 1px solid rgba(229, 57, 53, 0.35);
+  border-radius: 50px;
+  color: #e53935;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 0.2rem 0.65rem;
+  text-transform: uppercase;
+}
+
+/* ── Demo controls ────────────────────────────── */
+
+.demo-controls {
+  border-top: 1px solid var(--border-dark);
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 2rem;
+  padding-top: 1.25rem;
+}
+
+.btn-demo {
+  background: transparent;
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.45rem 0.875rem;
+  transition: border-color 0.2s, color 0.2s;
+}
+
+.btn-demo:hover { border-color: var(--purple); color: var(--purple); }
+
+.btn-demo--secondary:hover { border-color: var(--grey-75); color: var(--text-primary); }
+
 /* ── Ticket detail ────────────────────────────── */
 
 .ticket-id--link {
