@@ -186,14 +186,19 @@ function updateHeader() {
   } else {
     const isOnWorkflow = _currentView === 'workflow';
     const unreadCount = getUnreadQueueCount(user);
-    const badge = unreadCount > 0 ? `<span class="notif-badge">${unreadCount > 99 ? '99+' : unreadCount}</span>` : '';
+    const commentCount = getNewCommentCount(user);
     el.innerHTML = `
       <button class="header-btn header-btn--ghost" id="workflowBtn">${isOnWorkflow ? 'Main Menu' : 'My Workflow'}</button>
       <button class="header-btn header-btn--outline" id="switchUserBtn">Switch User</button>
       <button class="header-btn header-btn--outline" id="logoutBtn">Logout</button>
-      <span class="header-user-wrap">
-        <span class="header-user">&#128100; ${user.displayName}</span>
-        ${badge}
+      <span class="header-user">&#128100; ${user.displayName}</span>
+      <span class="header-notif ${unreadCount > 0 ? 'header-notif--active' : ''}" title="${unreadCount} unread ticket${unreadCount !== 1 ? 's' : ''}">
+        <span class="header-notif-icon">⚡</span>
+        ${unreadCount > 0 ? `<span class="header-notif-count">${unreadCount > 99 ? '99+' : unreadCount}</span>` : ''}
+      </span>
+      <span class="header-notif ${commentCount > 0 ? 'header-notif--active' : ''}" title="${commentCount} new message${commentCount !== 1 ? 's' : ''}">
+        <span class="header-notif-icon">💬</span>
+        ${commentCount > 0 ? `<span class="header-notif-count">${commentCount > 99 ? '99+' : commentCount}</span>` : ''}
       </span>`;
     document.getElementById('switchUserBtn').addEventListener('click', () => openLoginModal());
     document.getElementById('workflowBtn').addEventListener('click', isOnWorkflow ? renderHome : renderWorkflow);
@@ -235,6 +240,37 @@ function getUnreadQueueCount(user) {
     ? tickets
     : tickets.filter(t => t.assignedTo === user.username || (t.participants || []).includes(user.username));
   return queue.filter(t => !isTicketRead(t.id, user.username)).length;
+}
+
+function getCommentReadMap() {
+  return JSON.parse(localStorage.getItem('asd_comment_read') || '{}');
+}
+
+function getSeenCommentCount(ticketId, username) {
+  return ((getCommentReadMap()[username] || {})[ticketId]) ?? -1;
+}
+
+function markCommentsRead(ticketId, username, count) {
+  const map = getCommentReadMap();
+  if (!map[username]) map[username] = {};
+  map[username][ticketId] = count;
+  localStorage.setItem('asd_comment_read', JSON.stringify(map));
+}
+
+function hasNewComments(ticket, username) {
+  const seen = getSeenCommentCount(ticket.id, username);
+  return (ticket.comments || []).length > seen;
+}
+
+function getNewCommentCount(user) {
+  const tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
+  const visible = user.role === 'admin'
+    ? tickets
+    : tickets.filter(t =>
+        t.assignedTo === user.username ||
+        (t.participants || []).includes(user.username) ||
+        t.createdBy === user.username);
+  return visible.filter(t => hasNewComments(t, user.username)).length;
 }
 
 // ── Ticket helpers ─────────────────────────────
@@ -364,35 +400,42 @@ function renderWorkflow(tab, statusFilter) {
   const isAdmin = user.role === 'admin';
   let tickets = JSON.parse(localStorage.getItem('asd_tickets') || '[]');
 
-  const tabTickets = (() => {
-    let t;
-    if (isAdmin) {
-      t = tickets;
-    } else {
-      t = tab === 'queue'
-        ? tickets.filter(t => t.assignedTo === user.username || (t.participants || []).includes(user.username))
-        : tickets.filter(t => t.createdBy === user.username);
-    }
-    if (statusFilter !== 'all') t = t.filter(t => t.status === statusFilter);
-    return [...t].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  })();
+  const baseTickets = isAdmin
+    ? tickets
+    : tab === 'queue'
+      ? tickets.filter(t => t.assignedTo === user.username || (t.participants || []).includes(user.username))
+      : tickets.filter(t => t.createdBy === user.username);
+
+  const statusCounts = {
+    all:               baseTickets.length,
+    'open':            baseTickets.filter(t => (t.status || 'open') === 'open').length,
+    'in-progress':     baseTickets.filter(t => t.status === 'in-progress').length,
+    'awaiting-review': baseTickets.filter(t => t.status === 'awaiting-review').length,
+    'solved':          baseTickets.filter(t => t.status === 'solved').length,
+  };
+
+  const tabTickets = [...(statusFilter !== 'all' ? baseTickets.filter(t => t.status === statusFilter) : baseTickets)]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   const filterBtns = ['all', 'open', 'in-progress', 'awaiting-review', 'solved'].map(s => `
     <button class="filter-btn ${statusFilter === s ? 'filter-btn--active' : ''}" data-status="${s}">
-      ${s === 'all' ? 'All' : STATUS_LABELS[s]}
+      ${s === 'all' ? 'All' : STATUS_LABELS[s]}<span class="filter-count">${statusCounts[s]}</span>
     </button>`).join('');
 
-  const colCount = isAdmin ? 6 : 5;
+  const colCount = isAdmin ? 7 : 6;
   const isQueueView = isAdmin || tab === 'queue';
   const rows = tabTickets.length ? tabTickets.map(t => {
     const unread = isQueueView && !isTicketRead(t.id, user.username);
+    const newComment = hasNewComments(t, user.username);
+    const highlight = unread || newComment;
     return `
-    <tr class="ticket-row${unread ? ' ticket-row--unread' : ''}" data-search="${[t.id, t.learnerName, t.employerName, t.createdBy].filter(Boolean).join(' ').toLowerCase()}">
+    <tr class="ticket-row${highlight ? ' ticket-row--unread' : ''}" data-search="${[t.id, t.learnerName, t.employerName, t.createdBy].filter(Boolean).join(' ').toLowerCase()}">
       <td class="ticket-id ticket-id--link" data-id="${t.id}" data-origin="${isAdmin ? 'queue' : tab}">${t.id || '—'}</td>
       <td>${TICKET_TYPE_LABELS[t.type] || t.type || '—'}</td>
       <td>${t.learnerName || '—'}</td>
       ${isAdmin ? `<td>${t.createdBy || '—'}</td>` : ''}
       <td>${formatDateTime(t.createdAt)}</td>
+      <td>${t.comments && t.comments.length ? formatDateTime(t.comments[t.comments.length - 1].createdAt) : '—'}</td>
       <td><span class="status-badge status-badge--${t.status || 'open'}">${STATUS_LABELS[t.status] || 'Open'}</span></td>
     </tr>`;
   }).join('') :
@@ -423,6 +466,7 @@ function renderWorkflow(tab, statusFilter) {
             <th>Learner Name</th>
             ${isAdmin ? '<th>Raised By</th>' : ''}
             <th>Date Raised</th>
+            <th>Last Comment</th>
             <th>Status</th>
           </tr>
         </thead>
@@ -467,7 +511,10 @@ function renderTicketDetail(ticketId, origin) {
   const ticket = getTicket(ticketId);
   if (!ticket) { renderWorkflow(origin); return; }
   const user = getCurrentUser();
-  if (user) markTicketRead(ticketId, user.username);
+  if (user) {
+    markTicketRead(ticketId, user.username);
+    markCommentsRead(ticketId, user.username, (ticket.comments || []).length);
+  }
   _currentView = 'workflow';
   updateHeader();
 

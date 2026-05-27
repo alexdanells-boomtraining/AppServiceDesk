@@ -77,36 +77,38 @@ body {
   gap: 0.6rem;
 }
 
-.header-user-wrap {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-}
-
 .header-user {
   font-size: 0.85rem;
   color: var(--grey-50);
   font-weight: 500;
 }
 
-.notif-badge {
-  position: absolute;
-  top: -6px;
-  right: -10px;
-  background: #e53935;
-  border: 2px solid var(--white);
-  border-radius: 50px;
-  color: #fff;
-  font-size: 0.6rem;
-  font-weight: 800;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 3px;
-  display: flex;
+.header-notif {
   align-items: center;
-  justify-content: center;
+  border: 1px solid var(--grey-92);
+  border-radius: 50px;
+  color: var(--grey-50);
+  cursor: default;
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem 0.55rem;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.header-notif--active {
+  background: rgba(229, 57, 53, 0.07);
+  border-color: rgba(229, 57, 53, 0.35);
+}
+
+.header-notif-icon {
+  font-size: 0.85rem;
   line-height: 1;
-  pointer-events: none;
+}
+
+.header-notif-count {
+  color: #e53935;
+  font-size: 0.75rem;
+  font-weight: 800;
 }
 
 .header-btn {
@@ -655,6 +657,20 @@ input[type="checkbox"].is-error {
   background: var(--purple);
   border-color: var(--purple);
   color: #fff;
+}
+
+.filter-count {
+  background: rgba(0,0,0,0.15);
+  border-radius: 50px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-left: 0.35rem;
+  padding: 0.05rem 0.4rem;
+}
+
+.filter-btn:not(.filter-btn--active) .filter-count {
+  background: var(--bg-primary);
+  color: var(--text-muted);
 }
 
 /* ── Ticket table ─────────────────────────────── */
